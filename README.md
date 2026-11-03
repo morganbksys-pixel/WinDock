@@ -6,7 +6,7 @@ Launcher natif pour Windows 10/11 x64, en version bêta, écrit en C# / WPF (.NE
 
 Si vous disposez du ZIP portable, décompressez-le dans un dossier permanent puis lancez `WinDock.exe`. Conservez tous les fichiers du dossier : le runtime .NET est inclus, aucune installation n’est nécessaire. Le numéro de version est affiché en bas de **Réglages**.
 
-Après une compilation portable avec la commande ci-dessous, l’exécutable se trouve dans `artifacts/WinDock-win-x64/WinDock.exe`. Les archives de bêta portent un nom versionné, par exemple `WinDock-0.1.0-beta.5-win-x64.zip`.
+Après une compilation portable avec la commande ci-dessous, l’exécutable se trouve dans `artifacts/WinDock-win-x64/WinDock.exe`. Les archives de bêta portent un nom versionné, par exemple `WinDock-0.1.0-beta.7-win-x64.zip`.
 
 Le dépôt Git contient les sources, pas l’exécutable ni le runtime. Après un clonage, utilisez les commandes de développement ci-dessous pour lancer le projet ou produire le dossier portable.
 
@@ -47,13 +47,17 @@ Dans **Réglages**, cochez **Lancer WinDock au démarrage de Windows** pour lanc
 
 ## Données et limites
 
+La détection des applications ouvertes reconnaît aussi les lanceurs Squirrel (par exemple Claude Desktop) dont le processus utilise un sous-dossier `app-<version>` de la même installation. Un exécutable homonyme situé ailleurs, comme Claude en ligne de commande, reste distinct.
+
+Un clic droit sur une application ouverte propose **Fermer l’application**, ou **Fermer toutes les fenêtres** si plusieurs fenêtres sont reconnues, y compris minimisées. L’application peut demander un enregistrement, annuler ou ignorer la fermeture ; aucun processus n’est forcé à quitter. Sans fenêtre identifiable, cette commande est absente. Plusieurs raccourcis vers le même exécutable partagent cette action, quels que soient leurs arguments. Le point vert reste présent tant que le processus est actif.
+
 Les données sont enregistrées dans `%LocalAppData%\WinDock\settings.json`, indépendamment du dossier portable. Les copies de raccourcis sont dans le sous-dossier `Shortcuts`. Les anciennes entrées `.lnk` encore accessibles sont copiées au démarrage ; celles déjà supprimées restent réparables. Une configuration invalide est copiée dans un fichier `settings.json.invalid-*` avant le retour aux valeurs par défaut. La modification ou la suppression d’une entrée conserve l’ancienne version si la sauvegarde échoue. Les raccourcis d’origine ne sont jamais modifiés par WinDock.
 
 Les applications du catalogue utilisent une copie du raccourci classique lorsqu’il est identifiable, avec ses arguments et son dossier de travail. Sinon, WinDock crée un raccourci vers leur cible Shell Windows, sans lancer un exécutable interne à WindowsApps. Ces cibles spéciales permettent de modifier le nom ou de remplacer la cible, mais pas les arguments. Une application absente d’un catalogue lu avec succès est signalée comme manquante ; une erreur de lecture du catalogue ne suffit pas à la déclarer supprimée.
 
 Le cache est stocké séparément dans `%LocalAppData%\WinDock\CatalogCache\catalog.json`, avec ses icônes PNG intégrées. Une lecture Windows incomplète ou indisponible conserve le dernier catalogue complet. Un cache illisible est reconstruit ; il n’est jamais utilisé comme preuve de désinstallation. Le tout premier chargement nécessite toujours l’interrogation de Windows.
 
-Cette bêta ne modifie ni le bureau ni la barre des tâches et n’exige pas de droits administrateur. Le démarrage automatique est facultatif. Une seconde instance quitte immédiatement. Elle ne gère pas les fenêtres ouvertes ni les icônes de notification. L’exécutable n’est pas signé.
+Cette bêta ne modifie ni le bureau ni la barre des tâches et n’exige pas de droits administrateur. Le démarrage automatique est facultatif. Une seconde instance quitte immédiatement. Elle ne gère pas les icônes de notification. L’exécutable n’est pas signé.
 
 ## Développement
 

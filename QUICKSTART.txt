@@ -1,4 +1,4 @@
-WINDOCK — 0.1.0-BETA.5 — WINDOWS X64
+WINDOCK — 0.1.0-BETA.7 — WINDOWS X64
 
 1. Lancez WinDock.exe. Gardez tous les fichiers du dossier ensemble.
 2. Déposez des raccourcis .lnk, des applications .exe ou des dossiers.
@@ -18,6 +18,10 @@ WINDOCK — 0.1.0-BETA.5 — WINDOWS X64
    Les séparateurs se déplacent par glisser-déposer, comme les icônes.
 9. Réglages > Opacité du fond pour ajuster la transparence (10 à 100 %).
 10. Un point vert indique un processus reconnu par son exécutable ou son identité Windows.
+    Les installations Squirrel à dossiers de version, comme Claude Desktop, sont reconnues.
+    Clic droit > Fermer l’application / Fermer toutes les fenêtres demande une fermeture
+    normale, y compris des fenêtres minimisées. L’application peut demander un enregistrement
+    ou annuler. Sans fenêtre identifiable, cette commande est absente ; aucun arrêt forcé.
 11. Pendant un déplacement, la ligne bleue indique où déposer l’élément.
     Pour retirer une entrée, glissez-la hors du dock jusqu’à voir la corbeille
     rouge puis relâchez. Échap annule ; aucun fichier d’origine n’est supprimé.

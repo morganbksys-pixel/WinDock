@@ -24,6 +24,14 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--running-smoke")
+        {
+            var entry = new DockEntry(Guid.NewGuid(), args[1]);
+            var running = StaWorker.RunAsync(_ => new RunningApplications().Snapshot([entry]).Contains(entry.Id), default).GetAwaiter().GetResult();
+            var windows = new ApplicationWindows().CountAsync(entry, default).GetAwaiter().GetResult();
+            Console.WriteLine($"Running: {running}; recognized windows: {windows}. Read-only check; no close request sent.");
+            return running && windows > 0 ? 0 : 1;
+        }
         if (args.Length == 2 && args[0] == "--hold")
         {
             File.WriteAllText(args[1], "ready");
@@ -39,6 +47,63 @@ internal static class Program
         Directory.CreateDirectory(temporary);
         try
         {
+            Run("Versioned Squirrel applications share indicator and window identity without matching unrelated executables", () =>
+            {
+                var root = Path.Combine(temporary, "AnthropicClaude");
+                Directory.CreateDirectory(root);
+                var launcher = Path.Combine(root, "claude.exe");
+                var versioned = Path.Combine(root, "app-4.4212.0", "claude.exe");
+                var commandLine = Path.Combine(temporary, ".local", "bin", "claude.exe");
+                Check(!RunningApplications.MatchesExecutable(launcher, versioned));
+                File.WriteAllText(Path.Combine(root, "Update.exe"), "test marker");
+                Check(RunningApplications.MatchesExecutable(launcher, versioned));
+                Check(RunningApplications.MatchesExecutable(launcher, versioned.ToUpperInvariant()));
+                Check(RunningApplications.MatchesExecutable(launcher, Path.Combine(root, "app-4.5000.0", "claude.exe")));
+                Check(!RunningApplications.MatchesExecutable(launcher, commandLine));
+                Check(!RunningApplications.MatchesExecutable(launcher, Path.Combine(root + "-other", "app-4.4212.0", "claude.exe")));
+                Check(!RunningApplications.MatchesExecutable(launcher, Path.Combine(root, "app-invalid", "claude.exe")));
+                Check(!RunningApplications.MatchesExecutable(launcher, Path.Combine(root, "app-4.4212.0", "other.exe")));
+                Check(!RunningApplications.MatchesExecutable(launcher, Path.Combine(root, "app-4.4212.0", "nested", "claude.exe")));
+                var entry = new DockEntry(Guid.NewGuid(), launcher);
+                var tracker = new RunningApplications();
+                Check(tracker.Snapshot([entry], [versioned], []).Contains(entry.Id));
+                Check(!tracker.Snapshot([entry], [commandLine], []).Contains(entry.Id));
+                Check(!tracker.Snapshot([entry with { SourcePath = "shell:AppsFolder\\other!App" }], [versioned], []).Contains(entry.Id));
+                ApplicationWindow[] windows = [new(1, 10, versioned, null), new(2, 11, commandLine, null)];
+                var sent = new List<nint>();
+                var service = new ApplicationWindows(() => windows, handle => windows.Single(w => w.Handle == handle),
+                    handle => { sent.Add(handle); return 0; });
+                Check(service.CountAsync(entry, default).GetAwaiter().GetResult() == 1);
+                Check(service.CloseAsync(entry, default).GetAwaiter().GetResult() == 0);
+                Check(sent.SequenceEqual(new nint[] { 1 }));
+                var replaced = new ApplicationWindows(() => windows, handle => windows[0] with { Path = commandLine },
+                    _ => throw new InvalidOperationException("Unrelated process must never receive WM_CLOSE"));
+                Check(replaced.CloseAsync(entry, default).GetAwaiter().GetResult() == 0);
+            });
+            Run("Application closure matches exact identities and revalidates disappearing or reused windows", () =>
+            {
+                var executable = Path.Combine(temporary, "app.exe");
+                var entry = new DockEntry(Guid.NewGuid(), executable);
+                ApplicationWindow[] windows = [new(1, 10, executable, null), new(2, 11, executable, null),
+                    new(3, 12, Path.Combine(temporary, "other", "app.exe"), null), new(4, 13, null, "package!app")];
+                var sent = new List<nint>();
+                var service = new ApplicationWindows(() => windows,
+                    handle => windows.SingleOrDefault(window => window.Handle == handle),
+                    handle => { sent.Add(handle); return handle == 2 ? 5 : 0; });
+                Check(service.CountAsync(entry, default).GetAwaiter().GetResult() == 2);
+                Check(service.CloseAsync(entry, default).GetAwaiter().GetResult() == 1);
+                Check(sent.SequenceEqual(new nint[] { 1, 2 }));
+                Check(service.CountAsync(new(Guid.NewGuid(), temporary), default).GetAwaiter().GetResult() == 0);
+                Check(service.CountAsync(entry with { IsSeparator = true }, default).GetAwaiter().GetResult() == 0);
+                var store = entry with { SourcePath = "shell:AppsFolder\\package!app", ApplicationId = "package!app" };
+                Check(service.CountAsync(store, default).GetAwaiter().GetResult() == 1);
+                sent.Clear();
+                var vanished = new ApplicationWindows(() => windows, handle => handle == 1 ? null : windows[1] with { ProcessId = 99 },
+                    handle => { sent.Add(handle); return 0; });
+                Check(vanished.CloseAsync(entry, default).GetAwaiter().GetResult() == 0 && sent.Count == 0);
+                var expired = new ApplicationWindows(() => windows, handle => windows.Single(w => w.Handle == handle), _ => 1400);
+                Check(expired.CloseAsync(entry, default).GetAwaiter().GetResult() == 0);
+            });
             Run("Startup shortcut toggles safely and preserves an existing registration on failure", () =>
             {
                 var startupDirectory = Path.Combine(temporary, "démarrage test");
@@ -437,6 +502,75 @@ internal static class Program
                 Check(File.Exists(resultPath));
                 Check(File.ReadAllText(resultPath) == workingDirectory + "|été avec espaces");
                 window.Close();
+            });
+            Run("WM_CLOSE allows cancellation and closes dedicated minimized windows", () =>
+            {
+                var first = new Window { Title = "WinDock closure test", Width = 240, Height = 120 };
+                var second = new Window { Title = "WinDock minimized test", Width = 240, Height = 120 };
+                var requests = 0;
+                var cancel = true;
+                first.Closing += (_, e) => { requests++; e.Cancel = cancel; };
+                first.Show(); second.Show(); second.WindowState = WindowState.Minimized;
+                try
+                {
+                    Check(ApplicationWindows.PostClose(new WindowInteropHelper(first).Handle) == 0);
+                    PumpUntil(() => requests == 1);
+                    Check(first.IsVisible);
+                    Check(ApplicationWindows.PostClose(new WindowInteropHelper(second).Handle) == 0);
+                    PumpUntil(() => !second.IsVisible);
+                    cancel = false;
+                    Check(ApplicationWindows.PostClose(new WindowInteropHelper(first).Handle) == 0);
+                    PumpUntil(() => !first.IsVisible);
+                    Check(requests == 2);
+                }
+                finally { cancel = false; first.Close(); second.Close(); }
+            });
+            Run("Close menu refreshes counts, rejects stale results and dispatches one close request", () =>
+            {
+                var entry = new DockEntry(Guid.NewGuid(), Path.Combine(temporary, "menu-app.exe"));
+                var service = new FakeApplicationWindows();
+                var window = new DockWindow(new DockSettings { Entries = [entry] },
+                    new SettingsStore(Path.Combine(temporary, "close-menu.json")), new FakeRecycleBin(), service);
+                window.Show();
+                try
+                {
+                    var panel = (StackPanel)((Viewbox)((Border)window.Content).Child).Child;
+                    var button = panel.Children.OfType<Button>().Single();
+                    var menu = button.ContextMenu;
+                    menu.PlacementTarget = button;
+                    bool HasClose() => menu.Items.OfType<MenuItem>().Any(i => ((string?)i.Header)?.StartsWith("Fermer") == true);
+                    menu.IsOpen = true;
+                    PumpUntil(() => service.Pending.Count == 1);
+                    menu.IsOpen = false;
+                    menu.IsOpen = true;
+                    PumpUntil(() => service.Pending.Count == 2);
+                    service.Pending[0].SetResult(2);
+                    window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+                    Check(!HasClose());
+                    service.Pending[1].SetResult(0);
+                    window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+                    Check(!HasClose());
+                    foreach (var count in new[] { 1, 2 })
+                    {
+                        menu.IsOpen = false; menu.IsOpen = true;
+                        service.Pending[^1].SetResult(count);
+                        PumpUntil(HasClose);
+                        Check(Equals(((MenuItem)menu.Items[0]).Header, count == 1 ? "Fermer l’application" : "Fermer toutes les fenêtres"));
+                        Check(Equals(((MenuItem)menu.Items[1]).Header, "Modifier / réparer…"));
+                    }
+                    if (args.Length == 2 && args[0] == "--preview")
+                    {
+                        menu.UpdateLayout();
+                        Directory.CreateDirectory(args[1]);
+                        var bitmap = new RenderTargetBitmap((int)Math.Ceiling(menu.ActualWidth * 2), (int)Math.Ceiling(menu.ActualHeight * 2), 192, 192, PixelFormats.Pbgra32);
+                        bitmap.Render(menu);
+                        var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                        using var stream = File.Create(Path.Combine(args[1], "close-menu.png")); encoder.Save(stream);
+                    }
+                    ((MenuItem)menu.Items[0]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    Check(!menu.IsOpen && service.Closes == 1);
+                }
+                finally { window.Close(); }
             });
             Run("Managed shortcuts survive original deletion, preserve parameters and repair atomically", () =>
             {
@@ -858,6 +992,16 @@ internal static class Program
     }
 
     private static void Check(bool condition) { if (!condition) throw new InvalidOperationException("Assertion failed"); }
+    private sealed class FakeApplicationWindows : IApplicationWindows
+    {
+        internal readonly List<TaskCompletionSource<int>> Pending = [];
+        internal int Closes;
+        public Task<int> CountAsync(DockEntry entry, CancellationToken token)
+        {
+            var request = new TaskCompletionSource<int>(); Pending.Add(request); return request.Task;
+        }
+        public Task<int> CloseAsync(DockEntry entry, CancellationToken token) { Closes++; return Task.FromResult(0); }
+    }
     private sealed class FakeRecycleBin : IRecycleBinService
     {
         internal bool? EmptyState;

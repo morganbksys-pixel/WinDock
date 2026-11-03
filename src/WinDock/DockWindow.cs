@@ -37,6 +37,7 @@ public sealed class DockWindow : Window
     private ContextMenu? activeMenu;
     private ContextMenuDismissal? menuDismissal;
     private readonly RunningApplications runningApplications = new();
+    private readonly IApplicationWindows applicationWindows;
     private readonly Dictionary<Guid, Ellipse> runningIndicators = [];
     private HashSet<Guid> runningEntries = [];
     private bool checkingRunning, closed;
@@ -55,13 +56,15 @@ public sealed class DockWindow : Window
 
     public DockWindow(DockSettings settings, SettingsStore store) : this(settings, store, new RecycleBinService()) { }
 
-    internal DockWindow(DockSettings settings, SettingsStore store, IRecycleBinService recycleBin)
+    internal DockWindow(DockSettings settings, SettingsStore store, IRecycleBinService recycleBin,
+        IApplicationWindows? applicationWindows = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(store);
         this.settings = settings;
         this.store = store;
         this.recycleBin = recycleBin;
+        this.applicationWindows = applicationWindows ?? new ApplicationWindows();
         shortcuts = new ManagedShortcuts(store);
         dockBackground.Opacity = settings.BackgroundOpacity;
         Title = "WinDock";
@@ -372,8 +375,10 @@ public sealed class DockWindow : Window
     private ContextMenu CreateMenu(DockEntry? entry, bool isRecycleBin = false)
     {
         var menu = new ContextMenu { StaysOpen = false };
+        MenuItem? closeItem = null;
+        var generation = 0;
         ContextMenuDismissal? dismissal = null;
-        menu.Opened += (_, _) =>
+        menu.Opened += async (_, _) =>
         {
             CloseLabels();
             if (activeMenu is not null && activeMenu != menu) activeMenu.IsOpen = false;
@@ -385,9 +390,26 @@ public sealed class DockWindow : Window
                 menu.IsOpen = false;
                 ShowNotice("Impossible d’ouvrir le menu.\n\n" + ex.Message);
             }
+            var request = ++generation;
+            if (closeItem is null || entry is null || !menu.IsOpen) return;
+            menu.Items.Remove(closeItem);
+            try
+            {
+                var count = await applicationWindows.CountAsync(entry, lifetime.Token);
+                if (closed || !menu.IsOpen || request != generation || !settings.Entries.Contains(entry)) return;
+                if (count > 0)
+                {
+                    closeItem.Header = count == 1 ? "Fermer l’application" : "Fermer toutes les fenêtres";
+                    menu.Items.Insert(0, closeItem);
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
+            { /* Unavailable windows must not expose a stale close command. */ }
         };
         menu.Closed += (_, _) =>
         {
+            generation++;
             dismissal?.Dispose(); dismissal = null;
             if (activeMenu == menu) { menuDismissal = null; activeMenu = null; }
             interactionLocks--; outsideSince = 0;
@@ -406,6 +428,25 @@ public sealed class DockWindow : Window
         }
         if (entry is not null)
         {
+            if (!entry.IsSeparator)
+            {
+                closeItem = new MenuItem();
+                closeItem.Click += async (_, _) =>
+                {
+                    menu.IsOpen = false;
+                    interactionLocks++;
+                    try
+                    {
+                        var failures = await applicationWindows.CloseAsync(entry, lifetime.Token);
+                        if (!closed && failures > 0)
+                            ShowNotice("Impossible de demander la fermeture de certaines fenêtres. L’accès peut être refusé par Windows.");
+                    }
+                    catch (OperationCanceledException) { }
+                    catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
+                    { if (!closed) ShowNotice("Impossible de demander la fermeture de l’application.\n\n" + ex.Message); }
+                    finally { interactionLocks--; lastRunningCheck = 0; }
+                };
+            }
             if (!entry.IsSeparator) Item("Modifier / réparer…", () => EditEntry(entry));
             Item("Retirer du dock", () =>
             {
@@ -629,8 +670,8 @@ public sealed class DockWindow : Window
         var entries = settings.Entries.ToArray();
         try
         {
-            var (snapshot, missing) = await Task.Run(() => (runningApplications.Snapshot(entries),
-                entries.Where(shortcuts.IsMissing).Select(e => e.Id).ToHashSet()));
+            var (snapshot, missing) = await StaWorker.RunAsync(_ => (runningApplications.Snapshot(entries),
+                entries.Where(shortcuts.IsMissing).Select(e => e.Id).ToHashSet()), lifetime.Token);
             if (closed) return;
             if (!settings.Entries.SequenceEqual(entries)) { lastRunningCheck = 0; return; }
             runningEntries = snapshot;
@@ -641,6 +682,7 @@ public sealed class DockWindow : Window
                 badge.Visibility = missing.Contains(id) || snapshot.Contains(id) ? Visibility.Visible : Visibility.Hidden;
             }
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException or UnauthorizedAccessException)
         {
             // A process can exit or deny access during enumeration; retry on the next refresh.
