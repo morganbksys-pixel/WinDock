@@ -14,6 +14,8 @@ public enum DockEdge { Bottom, Top, Left, Right }
 public sealed record DockEntry(Guid Id, string Path, bool IsSeparator = false, string? DisplayName = null, string? SourcePath = null, string? ApplicationId = null);
 public sealed class DockSettings
 {
+    public bool AutoHide { get; set; } = true;
+    public bool ShowRecycleBin { get; set; }
     public DockEdge Edge { get; set; } = DockEdge.Bottom;
     public string? MonitorDevice { get; set; }
     /// <summary>Background opacity from 0.1 to 1; icons remain fully opaque.</summary>

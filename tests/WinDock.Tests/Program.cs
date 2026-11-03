@@ -13,6 +13,14 @@ using WinDock.Core;
 internal static class Program
 {
     private static int passed;
+    [DllImport("user32.dll")] private static extern nint GetWindow(nint window, uint command);
+
+    private static bool IsAbove(nint upper, nint lower)
+    {
+        for (var current = GetWindow(lower, 3); current != 0; current = GetWindow(current, 3)) // GW_HWNDPREV
+            if (current == upper) return true;
+        return false;
+    }
     [STAThread]
     private static int Main(string[] args)
     {
@@ -31,6 +39,29 @@ internal static class Program
         Directory.CreateDirectory(temporary);
         try
         {
+            Run("Startup shortcut toggles safely and preserves an existing registration on failure", () =>
+            {
+                var startupDirectory = Path.Combine(temporary, "démarrage test");
+                var executable = Environment.ProcessPath!;
+                var registration = new StartupRegistration(startupDirectory, executable);
+                Check(!registration.IsEnabled);
+                registration.SetEnabled(true);
+                var shortcut = Path.Combine(startupDirectory, "WinDock.lnk");
+                var details = ShellShortcut.Read(shortcut);
+                Check(details.Target == executable && details.Arguments == "" && details.WorkingDirectory == Path.GetDirectoryName(executable));
+                registration.SetEnabled(true);
+                var original = File.ReadAllBytes(shortcut);
+                try
+                {
+                    new StartupRegistration(startupDirectory, Path.Combine(temporary, "absent.exe")).SetEnabled(true);
+                    throw new InvalidOperationException("Missing executable was accepted");
+                }
+                catch (FileNotFoundException) { }
+                Check(File.ReadAllBytes(shortcut).SequenceEqual(original));
+                registration.SetEnabled(false);
+                registration.SetEnabled(false);
+                Check(!registration.IsEnabled && File.Exists(executable));
+            });
             Run("Missing settings use defaults", () =>
             {
                 var settings = new SettingsStore(Path.Combine(temporary, "missing.json")).Load(out var warning);
@@ -65,6 +96,9 @@ internal static class Program
                 var settings = store.Load(out var warning);
                 Check(warning is null && !settings.Entries[0].IsSeparator && settings.Entries[0].Id == id);
                 Check(settings.BackgroundOpacity == 238.0 / 255);
+                Check(settings.AutoHide && !settings.ShowRecycleBin);
+                settings.AutoHide = false;
+                settings.ShowRecycleBin = true;
                 var separator = new DockEntry(Guid.NewGuid(), "", true);
                 settings.Entries.Add(separator);
                 settings.BackgroundOpacity = 0.35;
@@ -73,6 +107,7 @@ internal static class Program
                 var loaded = store.Load(out warning);
                 Check(warning is null && loaded.Entries[0] == separator && loaded.BackgroundOpacity == 0.35);
                 Check(loaded.Entries[1].Id == id);
+                Check(!loaded.AutoHide && loaded.ShowRecycleBin);
             });
             Run("Structurally invalid settings reset safely", () =>
             {
@@ -149,14 +184,21 @@ internal static class Program
                     PumpUntil(() => window.OwnedWindows.Cast<Window>().Any(w => w is IndicatorWindow));
                     window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
                     Check(window.Width > 0 && window.Height > 0);
+                    Check(window.Icon is BitmapSource dockIcon && dockIcon.PixelWidth == 256 && dockIcon.PixelHeight == 256);
                     window.UpdateLayout();
                     var frame = (Border)window.Content;
                     Check(frame.Background.Opacity == 0.35);
                     var panel = (StackPanel)((Viewbox)frame.Child).Child;
                     var buttons = panel.Children.OfType<Button>().ToArray();
-                    Check(buttons.Length == count + 1 && Equals(buttons[^1].Content, "+"));
+                    Check(buttons.Length == count);
+                    if (count == 0) Check(panel.Children.OfType<TextBlock>().Single().Text == "Clic droit pour ajouter" && window.AllowDrop);
+                    var commonActions = new[] { "Ajouter…", "Ajouter un séparateur", "Réglages…", "Quitter WinDock" };
+                    Check(window.ContextMenu.Items.OfType<MenuItem>().Select(item => (string)item.Header).SequenceEqual(commonActions));
                     foreach (var button in buttons)
                     {
+                        var entry = (DockEntry)button.Tag;
+                        var actions = entry.IsSeparator ? new[] { "Retirer du dock" } : new[] { "Modifier / réparer…", "Retirer du dock" };
+                        Check(button.ContextMenu.Items.OfType<MenuItem>().Select(item => (string)item.Header).SequenceEqual(actions.Concat(commonActions)));
                         var bounds = button.TransformToAncestor(frame).TransformBounds(new Rect(button.RenderSize));
                         if (!(bounds.Left >= 8 && bounds.Top >= 8 && bounds.Right <= frame.ActualWidth - 8 && bounds.Bottom <= frame.ActualHeight - 8))
                             throw new InvalidOperationException($"Clipped button: {edge}, {count} entries, bounds {bounds}, frame {frame.ActualWidth} x {frame.ActualHeight}");
@@ -166,6 +208,182 @@ internal static class Program
                     Check(edge is DockEdge.Top or DockEdge.Bottom ? indicator.Width > indicator.Height : indicator.Height > indicator.Width);
                     window.Close();
                     Check(!indicator.IsVisible);
+                }
+            });
+            Run("Fixed dock remains visible and restores after full screen; auto hide still works", () =>
+            {
+                var settings = new DockSettings { AutoHide = false };
+                var window = new DockWindow(settings, new SettingsStore(Path.Combine(temporary, "fixed.json")));
+                try
+                {
+                    window.UpdateVisibility(false, false, false, 1000);
+                    window.UpdateVisibility(false, false, false, 3000);
+                    Check(window.IsHitTestVisible);
+                    window.UpdateVisibility(true, false, false, 4000);
+                    Check(!window.IsHitTestVisible);
+                    window.UpdateVisibility(false, false, false, 5000);
+                    Check(window.IsHitTestVisible);
+                    settings.AutoHide = true;
+                    window.UpdateVisibility(false, false, false, 6000);
+                    window.UpdateVisibility(false, false, false, 6700);
+                    Check(!window.IsHitTestVisible);
+                    window.UpdateVisibility(false, true, true, 7000);
+                    window.UpdateVisibility(false, true, true, 7160);
+                    Check(window.IsHitTestVisible);
+                }
+                finally { window.Close(); }
+            });
+            Run("Recycle bin retains state on failure, stays last, and uses only simulated actions", () =>
+            {
+                var fake = new FakeRecycleBin();
+                var settings = new DockSettings { ShowRecycleBin = true, Entries = [new(Guid.NewGuid(), temporary), new(Guid.NewGuid(), "", true)] };
+                var window = new DockWindow(settings, new SettingsStore(Path.Combine(temporary, "recycle.json")), fake);
+                try
+                {
+                    var panel = (StackPanel)((Viewbox)((Border)window.Content).Child).Child;
+                    var button = panel.Children.OfType<Button>().Last();
+                    Check(button.Tag is null && panel.Children.Count == 3 && settings.Entries.Count == 2);
+                    string Label() => ((TextBlock)((Border)((ToolTip)button.ToolTip).Content).Child).Text;
+                    void Refresh()
+                    {
+                        var task = window.RefreshRecycleAsync();
+                        var duplicate = window.RefreshRecycleAsync();
+                        Check(duplicate.IsCompleted);
+                        PumpUntil(() => task.IsCompleted);
+                        task.GetAwaiter().GetResult();
+                    }
+                    Refresh();
+                    Check(Label().Contains("indisponible"));
+                    fake.EmptyState = true;
+                    Refresh();
+                    Check(Label() == "Corbeille vide");
+                    fake.EmptyState = false;
+                    Refresh();
+                    Check(Label() == "Corbeille pleine");
+                    fake.EmptyState = null;
+                    Refresh();
+                    Check(Label() == "Corbeille pleine");
+                    fake.ThrowOnRead = true;
+                    Refresh();
+                    Check(Label() == "Corbeille pleine" && fake.MaximumConcurrentReads == 1 && fake.Reads == 5);
+                    fake.ThrowOnRead = false;
+                    button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    PumpUntil(() => fake.Opens == 1 && fake.Reads >= 6);
+                    var menuItems = button.ContextMenu.Items.OfType<MenuItem>().ToArray();
+                    Check(menuItems.Select(i => (string)i.Header).SequenceEqual(new[] { "Ouvrir", "Vider la corbeille…", "Ajouter…", "Ajouter un séparateur", "Réglages…", "Quitter WinDock" }));
+                    menuItems[1].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    PumpUntil(() => fake.Empties == 1 && Label() == "Corbeille vide");
+                    Check(settings.Entries.Count == 2);
+                    settings.ShowRecycleBin = false;
+                    var reads = fake.Reads;
+                    window.RefreshRecycleAsync().GetAwaiter().GetResult();
+                    Check(reads == fake.Reads);
+                }
+                finally { window.Close(); }
+            });
+            Run("Settings restore, activate without permanent topmost, and persist switches", () =>
+            {
+                var store = new SettingsStore(Path.Combine(temporary, "settings-switches.json"));
+                var settings = new DockSettings();
+                var window = new DockWindow(settings, store, new FakeRecycleBin());
+                var item = window.ContextMenu.Items.OfType<MenuItem>().Single(i => Equals(i.Header, "Réglages…"));
+                try
+                {
+                    item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    var dialog = Application.Current.Windows.Cast<Window>().Single(w => w.Title == "Réglages — WinDock");
+                    Check(!dialog.Topmost && dialog.IsActive);
+                    dialog.WindowState = WindowState.Minimized;
+                    item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    Check(dialog.WindowState == WindowState.Normal && !dialog.Topmost && dialog.IsActive);
+                    var panel = (StackPanel)((ScrollViewer)dialog.Content).Content;
+                    dialog.MaxHeight = 260;
+                    dialog.UpdateLayout();
+                    Check(((ScrollViewer)dialog.Content).ScrollableHeight > 0 && dialog.ActualHeight <= 260);
+                    var autoHide = panel.Children.OfType<CheckBox>().Single(c => Equals(c.Content, "Masquage automatique"));
+                    autoHide.IsChecked = false;
+                    autoHide.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));
+                    var recycle = panel.Children.OfType<CheckBox>().Single(c => Equals(c.Content, "Afficher la corbeille"));
+                    recycle.IsChecked = true;
+                    recycle.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));
+                    Check(!store.Load(out _).AutoHide && store.Load(out _).ShowRecycleBin);
+                    var dockPanel = (StackPanel)((Viewbox)((Border)window.Content).Child).Child;
+                    Check(dockPanel.Children.Count == 1 && dockPanel.Children[0] is Button { Tag: null });
+                    var other = new Window { Width = 200, Height = 100 };
+                    try { other.Show(); other.Activate(); Check(!dialog.Topmost && other.IsActive); }
+                    finally { other.Close(); }
+                    dialog.Close();
+                }
+                finally { window.Close(); }
+            });
+            Run("Dock labels use opaque rounded styling and stay within the screen on all edges", () =>
+            {
+                foreach (var edge in Enum.GetValues<DockEdge>())
+                {
+                    var settings = new DockSettings { AutoHide = false, Edge = edge, Entries = [new(Guid.NewGuid(), temporary, DisplayName: "Une application avec un nom très long pour vérifier le retour à la ligne du libellé")] };
+                    var window = new DockWindow(settings, new SettingsStore(Path.Combine(temporary, "labels.json")));
+                    try
+                    {
+                        window.Show();
+                        window.UpdateLayout();
+                        var panel = (StackPanel)((Viewbox)((Border)window.Content).Child).Child;
+                        var button = panel.Children.OfType<Button>().Single();
+                        var label = (ToolTip)button.ToolTip;
+                        label.IsOpen = true;
+                        PumpUntil(() => label.ActualWidth > 0 && PresentationSource.FromVisual(label) is not null);
+                        var border = (Border)label.Content;
+                        Check(border.CornerRadius.TopLeft == 8 && ((SolidColorBrush)border.Background).Color.A == 255);
+                        Check(((TextBlock)border.Child).FontSize == 12 && !label.IsHitTestVisible && label.ActualWidth <= 281);
+                        var origin = label.PointToScreen(new Point());
+                        var end = label.PointToScreen(new Point(label.ActualWidth, label.ActualHeight));
+                        Check(Native.Displays().Any(d => origin.X >= d.Work.X - 1 && origin.Y >= d.Work.Y - 1 && end.X <= d.Work.Right + 1 && end.Y <= d.Work.Bottom + 1));
+                        if (edge == DockEdge.Bottom) Check(end.Y <= button.PointToScreen(new Point()).Y);
+                        if (args.Length == 2 && args[0] == "--preview" && edge == DockEdge.Bottom)
+                        {
+                            Directory.CreateDirectory(args[1]);
+                            var labelBitmap = new RenderTargetBitmap((int)Math.Ceiling(label.ActualWidth * 2), (int)Math.Ceiling(label.ActualHeight * 2), 192, 192, PixelFormats.Pbgra32);
+                            labelBitmap.Render(label);
+                            var labelEncoder = new PngBitmapEncoder(); labelEncoder.Frames.Add(BitmapFrame.Create(labelBitmap));
+                            using var labelStream = File.Create(Path.Combine(args[1], "label.png"));
+                            labelEncoder.Save(labelStream);
+                        }
+                        button.ContextMenu.PlacementTarget = button;
+                        button.ContextMenu.IsOpen = true;
+                        PumpUntil(() => !label.IsOpen);
+                        button.ContextMenu.IsOpen = false;
+                        label.IsOpen = true;
+                        window.UpdateVisibility(true, false, false, 1000);
+                        Check(!label.IsOpen);
+                    }
+                    finally { window.Close(); }
+                }
+            });
+            Run("Dock menus stay above the dock across periodic placement updates", () =>
+            {
+                foreach (var edge in Enum.GetValues<DockEdge>())
+                {
+                    var settings = new DockSettings { Edge = edge, Entries = [new(Guid.NewGuid(), temporary)] };
+                    var window = new DockWindow(settings, new SettingsStore(Path.Combine(temporary, "menu-order.json")));
+                    try
+                    {
+                        window.Show();
+                        PumpUntil(() => window.OwnedWindows.Cast<Window>().Any(w => w is IndicatorWindow));
+                        var panel = (StackPanel)((Viewbox)((Border)window.Content).Child).Child;
+                        var button = panel.Children.OfType<Button>().Single();
+                        var menu = button.ContextMenu;
+                        menu.PlacementTarget = button;
+                        menu.IsOpen = true;
+                        PumpUntil(() => PresentationSource.FromVisual(menu) is HwndSource);
+                        var popup = ((HwndSource)PresentationSource.FromVisual(menu)).Handle;
+                        var dock = new WindowInteropHelper(window).Handle;
+                        var watch = Stopwatch.StartNew();
+                        PumpUntil(() =>
+                        {
+                            Check(menu.IsOpen && IsAbove(popup, dock));
+                            return watch.ElapsedMilliseconds >= 2300;
+                        });
+                        menu.IsOpen = false;
+                    }
+                    finally { window.Close(); }
                 }
             });
             Run("Non-activating menu keeps inside clicks and dismisses outside clicks", () =>
@@ -582,6 +800,7 @@ internal static class Program
                         var settings = new DockSettings();
                         if (populated)
                         {
+                            settings.ShowRecycleBin = true;
                             settings.BackgroundOpacity = 0.55;
                             settings.Entries.Add(new(Guid.NewGuid(), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe")));
                             settings.Entries.Add(new(Guid.NewGuid(), Environment.GetFolderPath(Environment.SpecialFolder.Windows)));
@@ -590,6 +809,14 @@ internal static class Program
                         }
                         var window = new DockWindow(settings, new SettingsStore(Path.Combine(temporary, "preview.json")));
                         new WindowInteropHelper(window).EnsureHandle();
+                        if (populated)
+                        {
+                            var refresh = window.RefreshRecycleAsync();
+                            PumpUntil(() => refresh.IsCompleted);
+                            refresh.GetAwaiter().GetResult();
+                            var bin = ((StackPanel)((Viewbox)((Border)window.Content).Child).Child).Children.OfType<Button>().Last();
+                            Check(bin.Content is Image { Source.IsFrozen: true });
+                        }
                         var content = (FrameworkElement)window.Content;
                         content.Measure(new Size(window.Width, window.Height));
                         content.Arrange(new Rect(0, 0, window.Width, window.Height));
@@ -599,6 +826,26 @@ internal static class Program
                         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
                         using var stream = File.Create(Path.Combine(args[1], populated ? "dock-populated.png" : "dock-empty.png"));
                         encoder.Save(stream);
+                        if (populated)
+                        {
+                            var settingsItem = window.ContextMenu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "Réglages…"));
+                            settingsItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                            var settingsWindow = Application.Current.Windows.Cast<Window>().Single(w => w.Title == "Réglages — WinDock");
+                            try
+                            {
+                                settingsWindow.UpdateLayout();
+                                var settingsPanel = (StackPanel)((ScrollViewer)settingsWindow.Content).Content;
+                                Check(settingsWindow.Icon is BitmapSource settingsIcon && settingsIcon.PixelWidth == 256 && settingsIcon.PixelHeight == 256);
+                                Check(settingsPanel.Children.OfType<TextBlock>().Any(text => text.Text.StartsWith("WinDock — Version 0.1.0-beta.")));
+                                var settingsBitmap = new RenderTargetBitmap((int)Math.Ceiling(settingsWindow.ActualWidth), (int)Math.Ceiling(settingsWindow.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+                                settingsBitmap.Render(settingsWindow);
+                                var settingsEncoder = new PngBitmapEncoder();
+                                settingsEncoder.Frames.Add(BitmapFrame.Create(settingsBitmap));
+                                using var settingsStream = File.Create(Path.Combine(args[1], "settings.png"));
+                                settingsEncoder.Save(settingsStream);
+                            }
+                            finally { settingsWindow.Close(); }
+                        }
                         window.Close();
                     }
                 });
@@ -611,6 +858,29 @@ internal static class Program
     }
 
     private static void Check(bool condition) { if (!condition) throw new InvalidOperationException("Assertion failed"); }
+    private sealed class FakeRecycleBin : IRecycleBinService
+    {
+        internal bool? EmptyState;
+        internal bool ThrowOnRead;
+        internal int Reads, Opens, Empties, MaximumConcurrentReads;
+        private int concurrentReads;
+        public RecycleBinSnapshot Read()
+        {
+            var active = Interlocked.Increment(ref concurrentReads);
+            MaximumConcurrentReads = Math.Max(MaximumConcurrentReads, active);
+            Interlocked.Increment(ref Reads);
+            try
+            {
+                Check(Thread.CurrentThread.GetApartmentState() == ApartmentState.STA);
+                Thread.Sleep(30);
+                if (ThrowOnRead) throw new IOException("Simulated unavailable recycle bin");
+                return new(EmptyState, null);
+            }
+            finally { Interlocked.Decrement(ref concurrentReads); }
+        }
+        public void Open() => Interlocked.Increment(ref Opens);
+        public void Empty(nint owner) { EmptyState = true; Interlocked.Increment(ref Empties); }
+    }
     private static void PumpUntil(Func<bool> condition, int timeoutMilliseconds = 5000)
     {
         var frame = new DispatcherFrame();

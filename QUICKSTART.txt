@@ -1,8 +1,8 @@
-WINDOCK — PROTOTYPE WINDOWS X64
+WINDOCK — 0.1.0-BETA.5 — WINDOWS X64
 
 1. Lancez WinDock.exe. Gardez tous les fichiers du dossier ensemble.
 2. Déposez des raccourcis .lnk, des applications .exe ou des dossiers.
-3. Le bouton + ouvre le catalogue des applications classiques et Microsoft Store.
+3. Clic droit > Ajouter… ouvre le catalogue des applications classiques et Microsoft Store.
    Recherchez, cochez les applications puis cliquez sur Ajouter la sélection.
    Ajout manuel, dossiers et séparateurs restent disponibles dans cette fenêtre.
    Le catalogue et les icônes sont gardés en cache après redémarrage, puis
@@ -12,9 +12,9 @@ WINDOCK — PROTOTYPE WINDOWS X64
    plus opaque à l’approche et révèle le dock après un bref instant.
 5. Clic droit > Réglages pour choisir un autre bord ou un autre écran.
 6. Glissez les icônes pour les réordonner. Le dock adapte sa taille au contenu,
-   bouton + compris. Si nécessaire, les icônes rétrécissent pour tenir à l’écran.
+   Si nécessaire, les icônes rétrécissent pour tenir à l’écran.
 7. Clic droit > Quitter WinDock pour arrêter l’application.
-8. Bouton + > Ajouter un séparateur pour organiser les icônes en groupes.
+8. Clic droit > Ajouter un séparateur pour organiser les icônes en groupes.
    Les séparateurs se déplacent par glisser-déposer, comme les icônes.
 9. Réglages > Opacité du fond pour ajuster la transparence (10 à 100 %).
 10. Un point vert indique un processus reconnu par son exécutable ou son identité Windows.
@@ -26,6 +26,21 @@ WINDOCK — PROTOTYPE WINDOWS X64
 13. Les raccourcis sont copiés dans les données de WinDock : après l’ajout,
     vous pouvez retirer le raccourci du bureau. Un point orange signale
     une cible manquante et permet de la réparer au clic.
+
+14. Réglages > Lancer WinDock au démarrage de Windows active le lancement
+    à l’ouverture de votre session. Option désactivée par défaut.
+    Gardez le dossier portable à son emplacement après activation.
+    Après déplacement : désactivez puis réactivez cette option.
+    Avant suppression du dossier : désactivez cette option.
+
+15. Réglages > Masquage automatique : désactivez pour un dock fixe.
+    Le dock reste masqué pendant le plein écran et revient ensuite.
+16. Réglages > Afficher la corbeille : ajoute la corbeille Windows en fin de dock.
+    Un clic ouvre la corbeille ; clic droit > Vider demande confirmation Windows.
+    Les icônes vide/pleine se rafraîchissent automatiquement.
+    Cette icône ne se déplace pas et n’accepte aucun dépôt.
+17. Les libellés apparaissent sous les icônes, ou au-dessus si nécessaire.
+    Les réglages s’ouvrent au premier plan et défilent sur les petits écrans.
 
 Aucune installation ou élévation administrateur nécessaire.
 Le programme ne modifie pas la barre des tâches ni les icônes du bureau.

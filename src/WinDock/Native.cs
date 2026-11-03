@@ -82,8 +82,9 @@ internal static class Native
         MakeNonActivating(hwnd);
         SetWindowLongPtr(hwnd, -20, GetWindowLongPtr(hwnd, -20) | 0x20);
     }
-    public static void Position(nint hwnd, PixelRect rect) => SetWindowPos(hwnd, new nint(-1),
-        (int)Math.Round(rect.X), (int)Math.Round(rect.Y), (int)Math.Round(rect.Width), (int)Math.Round(rect.Height), 0x0010);
+    // Keep popup menus above the dock during periodic placement updates.
+    public static void Position(nint hwnd, PixelRect rect) => SetWindowPos(hwnd, 0,
+        (int)Math.Round(rect.X), (int)Math.Round(rect.Y), (int)Math.Round(rect.Width), (int)Math.Round(rect.Height), 0x0014); // SWP_NOZORDER | SWP_NOACTIVATE
 
     public static bool FullScreen(Display display, nint ownWindow)
     {

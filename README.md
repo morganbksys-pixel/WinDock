@@ -11,10 +11,10 @@ Le dépôt Git contient les sources, pas l’exécutable ni le runtime. Après u
 Le dock apparaît initialement en bas de l’écran principal. Après masquage, une **fine barre arrondie** indique sa position, juste au-dessus de la barre des tâches si celle-ci est visible. Elle est discrète au repos, devient plus opaque à l’approche du pointeur et révèle le dock après 150 ms de survol. Sa zone de détection est plus large que la barre pour faciliter le geste. Le dock disparaît 600 ms après le départ du pointeur. L’indicateur s’oriente verticalement sur les bords gauche et droit et disparaît en plein écran.
 
 - Déposez des raccourcis `.lnk`, des exécutables `.exe` ou des dossiers depuis l’Explorateur. Les doublons de chemin sont ignorés.
-- Le bouton **+** ouvre **Ajouter au dock** : recherchez une application (sans distinction de casse ou d’accents), cochez plusieurs éléments et cliquez sur **Ajouter la sélection**. Les applications déjà présentes sont signalées. **Actualiser** recharge la liste.
+- **Clic droit → Ajouter…** ouvre **Ajouter au dock** : recherchez une application (sans distinction de casse ou d’accents), cochez plusieurs éléments et cliquez sur **Ajouter la sélection**. Les applications déjà présentes sont signalées. **Actualiser** recharge la liste. Lorsque le dock est vide, le texte **Clic droit pour ajouter** indique où ouvrir ce menu ; le glisser-déposer reste disponible.
 - Le dernier catalogue et ses icônes sont conservés entre les démarrages. La fenêtre affiche ce cache puis actualise les applications en arrière-plan, en conservant recherche et sélection. Vous pouvez continuer à ajouter des applications pendant l’actualisation. Fermer la fenêtre laisse cette actualisation terminer.
 - Le catalogue regroupe les applications classiques et Microsoft Store connues de Windows (`AppsFolder`), complétées par les raccourcis du menu Démarrer. Il ne recense pas tous les exécutables du disque. Les boutons **Ajout manuel…**, **Ajouter un dossier…** et **Ajouter un séparateur** restent accessibles.
-- **Ajouter un séparateur**, depuis **+** ou le clic droit, crée une ligne entre les groupes. Depuis une icône, elle est ajoutée juste après celle-ci. Faites glisser les séparateurs pour les déplacer ; le clic droit permet de les retirer.
+- **Ajouter un séparateur**, depuis le catalogue ou le clic droit, crée une ligne entre les groupes. Depuis une icône, elle est ajoutée juste après celle-ci. Faites glisser les séparateurs pour les déplacer ; le clic droit permet de les retirer.
 - Cliquez sur une icône pour lancer sa cible ; faites-la glisser pour changer son ordre. Les raccourcis `.lnk` sont copiés dans les données de WinDock avec leurs propriétés : vous pouvez supprimer le raccourci du bureau après l’ajout.
 - **Clic droit → Modifier / réparer…** permet de changer le nom, la cible, les arguments et le dossier de travail. Les paramètres sont préremplis ; les arguments saisis remplacent les anciens. Un remplacement par un autre `.lnk` reprend ses paramètres. Annuler ne change rien, et enregistrer conserve la position dans le dock.
 - Un point orange indique une cible introuvable. Un clic propose **Choisir une nouvelle cible**. Les raccourcis spéciaux non éditables sont conservés tels quels ; choisissez un exécutable ou un autre raccourci pour modifier leurs paramètres.
@@ -24,10 +24,18 @@ Le dock apparaît initialement en bas de l’écran principal. Après masquage, 
 - Le clic droit propose **Retirer du dock**, **Réglages** et **Quitter WinDock**. Retirer une entrée ne supprime pas le fichier.
 - Les réglages permettent de choisir un bord et un écran. Si cet écran est débranché, le dock revient sur l’écran principal ; il retrouve l’écran choisi lorsque celui-ci revient.
 - Dans **Réglages**, le curseur **Opacité du fond** va de 10 % à 100 %, avec aperçu immédiat. Les icônes gardent leur opacité. La valeur est enregistrée à la fermeture des réglages.
+- **Masquage automatique**, activé par défaut, peut être désactivé dans les réglages : le dock reste alors visible au-dessus des fenêtres ordinaires, sans réserver d’espace. Il disparaît en plein écran et réapparaît à sa fermeture. L’indicateur de bord est désactivé dans ce mode.
+- **Afficher la corbeille**, désactivé par défaut, ajoute la corbeille Windows en fin de dock. Son icône vide ou pleine est actualisée toutes les deux secondes. Cliquez pour l’ouvrir ; **Vider la corbeille…** au clic droit utilise la confirmation Windows. La corbeille ne se déplace pas et n’accepte pas les dépôts ; retirez-la avec l’interrupteur des réglages. Une lecture indisponible conserve le dernier état connu.
+- Au survol, les libellés s’affichent centrés sous l’icône sur un fond opaque arrondi, ou au-dessus lorsque l’espace manque. Les noms longs reviennent à la ligne.
+- Les réglages s’ouvrent au premier plan et restent défilables sur les petits écrans ; ils ne restent pas devant les autres applications lorsque vous changez de fenêtre.
 - Les menus se ferment au clic extérieur, lors d’un changement de fenêtre ou avec Échap.
-- Le dock grandit et rétrécit avec son contenu, bouton **+** compris. À la limite de l’écran, les icônes se réduisent proportionnellement pour rester toutes visibles, sans défilement.
+- Le dock grandit et rétrécit avec ses entrées, sans bouton d’ajout. À la limite de l’écran, les icônes se réduisent proportionnellement pour rester toutes visibles, sans défilement.
 
 Le dock n’apparaît pas devant une fenêtre au premier plan couvrant tout l’écran. Son apparition ne prend pas le focus clavier. Les réglages et sélecteurs de fichiers sont des fenêtres interactives normales.
+
+## Démarrage automatique
+
+Dans **Réglages**, cochez **Lancer WinDock au démarrage de Windows** pour lancer le dock à l’ouverture de votre session. Cette option est désactivée par défaut et prend effet immédiatement. Elle crée un raccourci `WinDock.lnk` dans le dossier Démarrage de votre compte, sans droits administrateur. Décochez-la avant de supprimer la version portable. Après un déplacement du dossier, désactivez puis réactivez l’option depuis le nouvel emplacement. Si Windows a désactivé cette entrée dans ses applications de démarrage, réactivez-la également dans les paramètres Windows.
 
 ## Données et limites
 
@@ -37,7 +45,7 @@ Les applications du catalogue utilisent une copie du raccourci classique lorsqu�
 
 Le cache est stocké séparément dans `%LocalAppData%\WinDock\CatalogCache\catalog.json`, avec ses icônes PNG intégrées. Une lecture Windows incomplète ou indisponible conserve le dernier catalogue complet. Un cache illisible est reconstruit ; il n’est jamais utilisé comme preuve de désinstallation. Le tout premier chargement nécessite toujours l’interrogation de Windows.
 
-Ce prototype ne modifie ni le bureau ni la barre des tâches, ne se lance pas automatiquement avec Windows et n’exige pas de droits administrateur. Une seconde instance quitte immédiatement. Il ne gère pas les fenêtres ouvertes ni les icônes de notification. L’exécutable n’est pas signé.
+Cette bêta ne modifie ni le bureau ni la barre des tâches et n’exige pas de droits administrateur. Le démarrage automatique est facultatif. Une seconde instance quitte immédiatement. Elle ne gère pas les fenêtres ouvertes ni les icônes de notification. L’exécutable n’est pas signé.
 
 ## Développement
 
@@ -89,5 +97,8 @@ dotnet publish src/WinDock/WinDock.csproj -c Release -r win-x64 --self-contained
 - Ajouter des applications et dossiers, changer l’ordre, relancer WinDock et vérifier leur conservation.
 - Supprimer ou déplacer une cible hors du dock, puis vérifier le message au lancement.
 - Lancer deux fois WinDock et vérifier qu’un seul dock demeure.
+- Vérifier le mode fixe, le masquage en plein écran et le retour automatique, avec les écrans à DPI mixtes.
+- Vérifier le positionnement des libellés aux quatre bords, leur fermeture pendant les menus et les déplacements, et le défilement des réglages à fort DPI.
+- Pour tester la corbeille, utiliser uniquement un fichier jetable créé pour cet essai : contrôler les états vide/plein et l’annulation de la confirmation Windows. Ne confirmer le vidage que si tout le contenu de la corbeille peut être supprimé. Les tests automatisés ne vident jamais la corbeille réelle.
 
 Le calcul de placement et le stockage sont dans `WinDock.Core`. L’interface et les appels Windows sont dans `WinDock`.

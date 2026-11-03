@@ -5,7 +5,10 @@
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>WinDock</AssemblyName>
+    <Version>0.1.0-beta.5</Version>
+    <ApplicationIcon>Assets/WinDock.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup><ProjectReference Include="../WinDock.Core/WinDock.Core.csproj" /></ItemGroup>
+  <ItemGroup><Resource Include="Assets/WinDock.ico" /></ItemGroup>
   <ItemGroup><Content Include="../../QUICKSTART.txt" Link="LIRE-MOI.txt" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>
 </Project>
