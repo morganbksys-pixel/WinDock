@@ -11,7 +11,7 @@ WINDOCK — 0.1.0-BETA.5 — WINDOWS X64
    en bas de l’écran, juste au-dessus de la barre des tâches. Elle devient
    plus opaque à l’approche et révèle le dock après un bref instant.
 5. Clic droit > Réglages pour choisir un autre bord ou un autre écran.
-6. Glissez les icônes pour les réordonner. Le dock adapte sa taille au contenu,
+6. Glissez les icônes pour les réordonner. Le dock adapte sa taille au contenu.
    Si nécessaire, les icônes rétrécissent pour tenir à l’écran.
 7. Clic droit > Quitter WinDock pour arrêter l’application.
 8. Clic droit > Ajouter un séparateur pour organiser les icônes en groupes.
@@ -41,10 +41,11 @@ WINDOCK — 0.1.0-BETA.5 — WINDOWS X64
     Cette icône ne se déplace pas et n’accepte aucun dépôt.
 17. Les libellés apparaissent sous les icônes, ou au-dessus si nécessaire.
     Les réglages s’ouvrent au premier plan et défilent sur les petits écrans.
+    Le numéro de version apparaît en bas de cette fenêtre.
 
 Aucune installation ou élévation administrateur nécessaire.
 Le programme ne modifie pas la barre des tâches ni les icônes du bureau.
 Les préférences sont conservées dans %LocalAppData%\WinDock\settings.json.
 
-Première version : launcher uniquement, sans gestion des fenêtres ouvertes
+Version bêta : launcher uniquement, sans gestion des fenêtres ouvertes
 ni de la zone de notification Windows. Une seule instance active à la fois.

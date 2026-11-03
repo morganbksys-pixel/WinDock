@@ -1,12 +1,20 @@
 # WinDock
 
-Prototype de launcher natif pour Windows 10/11 x64, écrit en C# / WPF (.NET 10).
+Launcher natif pour Windows 10/11 x64, en version bêta, écrit en C# / WPF (.NET 10).
 
 ## Essayer
 
-Ouvrez `artifacts/WinDock-win-x64/WinDock.exe`. Conservez tout le dossier à côté de l’exécutable : le runtime .NET est inclus, aucune installation n’est nécessaire.
+Si vous disposez du ZIP portable, décompressez-le dans un dossier permanent puis lancez `WinDock.exe`. Conservez tous les fichiers du dossier : le runtime .NET est inclus, aucune installation n’est nécessaire. Le numéro de version est affiché en bas de **Réglages**.
+
+Après une compilation portable avec la commande ci-dessous, l’exécutable se trouve dans `artifacts/WinDock-win-x64/WinDock.exe`. Les archives de bêta portent un nom versionné, par exemple `WinDock-0.1.0-beta.5-win-x64.zip`.
 
 Le dépôt Git contient les sources, pas l’exécutable ni le runtime. Après un clonage, utilisez les commandes de développement ci-dessous pour lancer le projet ou produire le dossier portable.
+
+### Mettre à jour
+
+Quittez WinDock via son menu contextuel, puis remplacez les fichiers du dossier portable par ceux de la nouvelle archive. Les réglages et raccourcis sont conservés séparément dans `%LocalAppData%\WinDock` : ne supprimez pas ce dossier lors de la mise à jour. Relancez `WinDock.exe` et vérifiez la version dans **Réglages**. Si vous changez l’emplacement du dossier portable, désactivez puis réactivez le démarrage automatique depuis le nouvel emplacement.
+
+### Utilisation
 
 Le dock apparaît initialement en bas de l’écran principal. Après masquage, une **fine barre arrondie** indique sa position, juste au-dessus de la barre des tâches si celle-ci est visible. Elle est discrète au repos, devient plus opaque à l’approche du pointeur et révèle le dock après 150 ms de survol. Sa zone de détection est plus large que la barre pour faciliter le geste. Le dock disparaît 600 ms après le départ du pointeur. L’indicateur s’oriente verticalement sur les bords gauche et droit et disparaît en plein écran.
 
@@ -65,6 +73,8 @@ dotnet run --project tests/WinDock.Tests -c Release -p:BuildInParallel=false
 ```
 
 Les tests sont un exécutable autonome sans dépendance de framework de test. Ils retournent un code non nul en cas d’échec. Ils couvrent la persistance, les configurations invalides, le réordonnancement, les formats acceptés, le placement sur les quatre bords, les coordonnées négatives, la mise à l’échelle, le débordement, l’initialisation WPF et le lancement effectif d’un raccourci avec arguments et répertoire de travail contenant des espaces et accents. Le test de raccourci lance brièvement un processus de test qui écrit uniquement dans son dossier temporaire.
+
+Ils vérifient aussi les transitions du mode fixe et du plein écran, la superposition des menus, la restauration des réglages au premier plan, leur défilement, les interrupteurs persistés et le placement des libellés. Les états et actions de la corbeille sont testés avec un service simulé ; le démarrage automatique utilise un dossier temporaire. Aucun test ne vide la corbeille réelle ni ne modifie le démarrage automatique du compte. Le mode `--preview` produit les aperçus du dock, des réglages et d’un libellé ; il lit également l’état et l’icône système de la corbeille réelle sans en modifier le contenu.
 
 Les tests WPF et Shell doivent s’exécuter dans une session Windows interactive. Les sorties `bin`, `obj`, `artifacts` et les préférences des IDE sont exclues du dépôt. Les données utilisateur restent dans `%LocalAppData%\WinDock`.
 

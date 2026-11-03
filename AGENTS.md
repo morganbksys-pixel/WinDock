@@ -4,6 +4,7 @@
 
 - `WinDock.slnx` groups the application, core library, and tests.
 - `src/WinDock/` contains the WPF interface, XAML styles, Win32/Shell integration, application catalogue, and managed shortcuts. Keep visual resources alongside the interface.
+- `src/WinDock/Assets/` contains the source PNG and multi-resolution ICO for the application identity. `DockLabels` handles hover labels, `RecycleBinService` wraps the Windows recycle bin behind `IRecycleBinService`, and `StartupRegistration` manages the current user's startup shortcut.
 - `src/WinDock.Core/` contains settings, persistence, entry rules, and placement geometry. Coordinates here are physical desktop pixels, including negative monitor origins.
 - `tests/WinDock.Tests/Program.cs` contains the executable test harness.
 - `artifacts/` holds generated previews and portable builds; it is ignored by Git. `README.md` and `QUICKSTART.txt` document usage.
@@ -27,13 +28,23 @@ Follow existing C# conventions: four-space indentation, file-scoped namespaces, 
 
 Keep Shell COM work on background STA workers and UI updates on the WPF dispatcher. Freeze images before sharing across threads. Preserve French user-facing text.
 
+Periodic positioning must preserve window Z-order and avoid activation (`SWP_NOZORDER | SWP_NOACTIVATE`) so the dock does not cover its menus. Activate settings only in response to the user opening them; do not keep them permanently topmost. For WPF window icons, explicitly select the largest ICO frame: loading the first frame with `BitmapImage` can select only 16 × 16 pixels.
+
 ## Testing Guidelines
 
 Tests use custom `Run("behavior description", ...)` groups and `Check` assertions, not a framework or `dotnet test`. Add meaningful regression coverage for changed behavior; no numeric coverage threshold is configured. Use temporary directories, never real user settings. For interaction changes, also verify focus, drag cancellation, screen edges, and mixed DPI manually.
 
+Use a fake `IRecycleBinService` for recycle bin actions and state transitions. Automated tests must never empty the real recycle bin or change the account's startup registration; use a temporary startup directory. Preview generation may read the real recycle bin state and system icon, but must not modify its contents. Cover fixed-mode/full-screen transitions, menu Z-order, label placement and settings activation when changing these behaviors.
+
+## Beta Delivery
+
+Set the release version in `src/WinDock/WinDock.csproj` and keep the banner in `QUICKSTART.txt` aligned. The settings window reads the assembly informational version; do not hardcode a separate UI version. Update usage documentation for behavior changes.
+
+Build Release, run the executable test harness, and generate/review previews for visual changes. Publish self-contained Windows x64 output to a fresh `artifacts/WinDock-<version>-win-x64` directory, using `-p:DebugType=None -p:DebugSymbols=false`, then archive the complete directory as `WinDock-<version>-win-x64.zip`. Keep the generated package out of Git. Report validation results and manual hardware checks still outstanding; do not imply that mixed-DPI testing was completed when only geometry tests ran.
+
 ## Commit & Pull Request Guidelines
 
-History currently contains only the initial commit; no strict convention exists. Use concise, descriptive subjects. PRs should explain the problem, resulting behavior, validation, and remaining limitations. Link relevant issues and include screenshots for visual changes.
+Use concise, descriptive commit subjects. PRs should explain the problem, resulting behavior, validation, and remaining limitations. Link relevant issues and include screenshots for visual changes.
 
 ## Data Safety
 
