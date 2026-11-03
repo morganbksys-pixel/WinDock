@@ -1,0 +1,30 @@
+**/bin/
+**/obj/
+artifacts/
+.vs/
+
+# IDE and user-specific settings
+.idea/
+*.user
+*.suo
+*.sln.docstates
+
+# Test output and diagnostics
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+*.log
+*.dmp
+
+# Local environment and signing material
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.key
+
+# Local Windows files
+Thumbs.db
+Desktop.ini

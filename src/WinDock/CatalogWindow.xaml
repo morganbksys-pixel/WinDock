@@ -1,0 +1,59 @@
+<Window x:Class="WinDock.CatalogWindow" x:ClassModifier="internal" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Ajouter au dock" Width="680" Height="640"
+        MinWidth="580" MinHeight="500" WindowStartupLocation="CenterScreen" Background="#1B1E27" Foreground="#F3F4F8">
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+    <StackPanel>
+      <TextBlock Text="Ajouter au dock" FontSize="24"/>
+      <TextBlock Text="Retrouvez vos applications et choisissez celles à garder à portée de main." Foreground="#BFC4D2" Margin="0,6,0,18" TextWrapping="Wrap"/>
+    </StackPanel>
+    <DockPanel Grid.Row="1" Margin="0,0,0,12">
+      <Button x:Name="RefreshButton" DockPanel.Dock="Right" Content="Actualiser" Padding="14,8" Margin="10,0,0,0" Background="#3E4D6F" Click="OnRefresh"/>
+      <TextBox x:Name="Search" Padding="10,8" FontSize="14" ToolTip="Rechercher une application" AutomationProperties.Name="Rechercher une application" TextChanged="OnSearchChanged"/>
+    </DockPanel>
+    <TextBlock x:Name="Status" Grid.Row="2" Foreground="#BFC4D2" Margin="0,0,0,10" TextWrapping="Wrap" Text="Chargement des applications…"/>
+    <ListBox x:Name="Applications" Grid.Row="3" Background="#151820" BorderThickness="0" Foreground="#F3F4F8"
+             ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+      <ListBox.ItemContainerStyle>
+        <Style TargetType="ListBoxItem">
+          <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+          <Setter Property="Padding" Value="4"/>
+          <Setter Property="Focusable" Value="False"/>
+        </Style>
+      </ListBox.ItemContainerStyle>
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" IsEnabled="{Binding CanAdd}" Foreground="#F3F4F8"
+                    VerticalContentAlignment="Center" HorizontalContentAlignment="Stretch" Padding="8" ToolTip="{Binding Details}">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <Grid Width="32" Height="32" HorizontalAlignment="Left">
+                <TextBlock Text="&#xE71D;" FontFamily="Segoe MDL2 Assets" FontSize="26" Foreground="#BFC4D2" VerticalAlignment="Center" HorizontalAlignment="Center">
+                  <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Application.Icon}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                </TextBlock>
+                <Image Source="{Binding Application.Icon}"/>
+              </Grid>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Application.Name}" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{Binding Description}" Foreground="#BFC4D2" FontSize="11" Margin="0,3,0,0"/>
+                <TextBlock Text="{Binding InstallationPath}" ToolTip="{Binding InstallationPath}" Foreground="#A2A9BA" FontSize="11" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
+              </StackPanel>
+            </Grid>
+          </CheckBox>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+    <WrapPanel Grid.Row="4" Margin="0,16,0,12">
+      <Button x:Name="ManualButton" Content="Ajout manuel…" Padding="10,8" Margin="0,0,6,0" Background="#303747" Click="OnManual"/>
+      <Button x:Name="FolderButton" Content="Ajouter un dossier…" Padding="10,8" Margin="0,0,6,0" Background="#303747" Click="OnFolder"/>
+      <Button x:Name="SeparatorButton" Content="Ajouter un séparateur" Padding="10,8" Background="#303747" Click="OnSeparator"/>
+    </WrapPanel>
+    <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button Content="Fermer" Padding="14,10" Margin="0,0,8,0" IsCancel="True" Click="OnClose"/>
+      <Button x:Name="AddButton" Content="Ajouter la sélection" Padding="14,10" Background="#3E4D6F" IsEnabled="False" Click="OnAdd"/>
+    </StackPanel>
+  </Grid>
+</Window>

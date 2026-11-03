@@ -1,0 +1,35 @@
+WINDOCK — PROTOTYPE WINDOWS X64
+
+1. Lancez WinDock.exe. Gardez tous les fichiers du dossier ensemble.
+2. Déposez des raccourcis .lnk, des applications .exe ou des dossiers.
+3. Le bouton + ouvre le catalogue des applications classiques et Microsoft Store.
+   Recherchez, cochez les applications puis cliquez sur Ajouter la sélection.
+   Ajout manuel, dossiers et séparateurs restent disponibles dans cette fenêtre.
+   Le catalogue et les icônes sont gardés en cache après redémarrage, puis
+   actualisés en arrière-plan sans bloquer la recherche ou l’ajout.
+4. Pour retrouver le dock masqué, survolez la petite barre arrondie visible
+   en bas de l’écran, juste au-dessus de la barre des tâches. Elle devient
+   plus opaque à l’approche et révèle le dock après un bref instant.
+5. Clic droit > Réglages pour choisir un autre bord ou un autre écran.
+6. Glissez les icônes pour les réordonner. Le dock adapte sa taille au contenu,
+   bouton + compris. Si nécessaire, les icônes rétrécissent pour tenir à l’écran.
+7. Clic droit > Quitter WinDock pour arrêter l’application.
+8. Bouton + > Ajouter un séparateur pour organiser les icônes en groupes.
+   Les séparateurs se déplacent par glisser-déposer, comme les icônes.
+9. Réglages > Opacité du fond pour ajuster la transparence (10 à 100 %).
+10. Un point vert indique un processus reconnu par son exécutable ou son identité Windows.
+11. Pendant un déplacement, la ligne bleue indique où déposer l’élément.
+    Pour retirer une entrée, glissez-la hors du dock jusqu’à voir la corbeille
+    rouge puis relâchez. Échap annule ; aucun fichier d’origine n’est supprimé.
+12. Clic droit > Modifier / réparer pour changer la cible, le nom,
+    les arguments ou le dossier de travail, sans déplacer l’entrée.
+13. Les raccourcis sont copiés dans les données de WinDock : après l’ajout,
+    vous pouvez retirer le raccourci du bureau. Un point orange signale
+    une cible manquante et permet de la réparer au clic.
+
+Aucune installation ou élévation administrateur nécessaire.
+Le programme ne modifie pas la barre des tâches ni les icônes du bureau.
+Les préférences sont conservées dans %LocalAppData%\WinDock\settings.json.
+
+Première version : launcher uniquement, sans gestion des fenêtres ouvertes
+ni de la zone de notification Windows. Une seule instance active à la fois.
