@@ -1,12 +1,12 @@
 # WinDock
 
-Launcher natif pour Windows 10/11 x64, en version bêta, écrit en C# / WPF (.NET 10).
+Launcher natif pour Windows 10/11 x64, en version 0.0.1, écrit en C# / WPF (.NET 10).
 
 ## Essayer
 
 Si vous disposez du ZIP portable, décompressez-le dans un dossier permanent puis lancez `WinDock.exe`. Conservez tous les fichiers du dossier : le runtime .NET est inclus, aucune installation n’est nécessaire. Le numéro de version est affiché en bas de **Réglages**.
 
-Après une compilation portable avec la commande ci-dessous, l’exécutable se trouve dans `artifacts/WinDock-win-x64/WinDock.exe`. Les archives de bêta portent un nom versionné, par exemple `WinDock-0.1.0-beta.7-win-x64.zip`.
+Après une compilation portable avec la commande ci-dessous, l’exécutable se trouve dans `artifacts/WinDock-win-x64/WinDock.exe`. Les archives de release portent un nom versionné, par exemple `WinDock-0.0.1-win-x64.zip`.
 
 Le dépôt Git contient les sources, pas l’exécutable ni le runtime. Après un clonage, utilisez les commandes de développement ci-dessous pour lancer le projet ou produire le dossier portable.
 
@@ -57,7 +57,7 @@ Les applications du catalogue utilisent une copie du raccourci classique lorsqu�
 
 Le cache est stocké séparément dans `%LocalAppData%\WinDock\CatalogCache\catalog.json`, avec ses icônes PNG intégrées. Une lecture Windows incomplète ou indisponible conserve le dernier catalogue complet. Un cache illisible est reconstruit ; il n’est jamais utilisé comme preuve de désinstallation. Le tout premier chargement nécessite toujours l’interrogation de Windows.
 
-Cette bêta ne modifie ni le bureau ni la barre des tâches et n’exige pas de droits administrateur. Le démarrage automatique est facultatif. Une seconde instance quitte immédiatement. Elle ne gère pas les icônes de notification. L’exécutable n’est pas signé.
+WinDock ne modifie ni le bureau ni la barre des tâches et n’exige pas de droits administrateur. Le démarrage automatique est facultatif. Une seconde instance quitte immédiatement. Elle ne gère pas les icônes de notification. L’exécutable n’est pas signé.
 
 ## Développement
 
