@@ -33,11 +33,15 @@ Ils vérifient aussi les transitions du mode fixe et du plein écran, la superpo
 
 Les tests WPF et Shell doivent s’exécuter dans une session Windows interactive. Les sorties `bin`, `obj`, `artifacts` et les préférences des IDE sont exclues du dépôt. Les données utilisateur restent dans `%LocalAppData%\WinDock`.
 
+Le workflow GitHub Actions `.NET` utilise un runner Windows avec le SDK .NET 10. Il compile en Release puis lance ce même harnais avec `dotnet run --project tests/WinDock.Tests -c Release --no-build -- --preview artifacts/previews`, sans passer par `dotnet test`. Les aperçus produits sont disponibles dans l’artefact `windock-previews` pendant sept jours. Cette vérification ne remplace pas la recette matérielle multi-écrans et DPI mixtes.
+
 Pour générer les aperçus de l’interface réelle :
 
 ```powershell
 dotnet run --project tests/WinDock.Tests -c Release --no-build -- --preview artifacts/previews
 ```
+
+Ce mode vérifie aussi la résolution de 256 × 256 pixels, le gel et le cache des deux icônes système de la corbeille. Il produit les comparaisons `recycle-empty-100.png`, `recycle-full-100.png` et leurs variantes `150` et `200` : l’icône standard est à gauche, la haute définition à droite, à une taille d’affichage de 48 pixels WPF. Les rendus à 100 %, 150 % et 200 % ne remplacent pas les essais matériels à DPI mixtes. Ces comparaisons chargent les icônes vide et pleine sans modifier le contenu de la corbeille.
 
 Pour tester le catalogue réel, la persistance des raccourcis et l’identité des processus (ce test ouvre la Calculatrice) :
 

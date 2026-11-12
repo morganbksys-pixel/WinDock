@@ -332,6 +332,7 @@ public sealed class DockWindow : Window
         recycleButton.Content = recycleState.Icon is { } icon
             ? new Image { Source = icon, Width = 48, Height = 48, Stretch = Stretch.Uniform }
             : new TextBlock { Text = "♻", FontSize = 32 };
+        if (recycleButton.Content is Image image) RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
         var label = recycleState.IsEmpty switch { true => "Corbeille vide", false => "Corbeille pleine", _ => "Corbeille — état indisponible" };
         if (recycleButton.ToolTip is ToolTip { Content: Border { Child: TextBlock text } }) text.Text = label;
         else AttachLabel(recycleButton, label);

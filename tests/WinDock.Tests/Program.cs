@@ -298,9 +298,29 @@ internal static class Program
                 }
                 finally { window.Close(); }
             });
+            Run("Recycle icon fallback caches each successful state and retries unavailable images", () =>
+            {
+                var icon = BitmapSource.Create(1, 1, 96, 96, PixelFormats.Bgra32, null, new byte[4], 4);
+                icon.Freeze();
+                var attempts = new List<bool>();
+                var fallbacks = new List<bool>();
+                var service = new RecycleBinService(empty => { attempts.Add(empty); return null; },
+                    empty => { fallbacks.Add(empty); return icon; });
+                Check(ReferenceEquals(service.GetIcon(true), icon));
+                Check(ReferenceEquals(service.GetIcon(true), icon));
+                Check(ReferenceEquals(service.GetIcon(false), icon));
+                Check(attempts.SequenceEqual(new[] { true, false }) && fallbacks.SequenceEqual(attempts));
+                var unavailable = new RecycleBinService(empty => { attempts.Add(empty); return null; }, _ => null);
+                Check(unavailable.GetIcon(true) is null && unavailable.GetIcon(true) is null && attempts.Count == 4);
+                var preferred = new RecycleBinService(_ => icon, _ => throw new InvalidOperationException("Unexpected fallback"));
+                Check(ReferenceEquals(preferred.GetIcon(false), icon));
+            });
             Run("Recycle bin retains state on failure, stays last, and uses only simulated actions", () =>
             {
-                var fake = new FakeRecycleBin();
+                var pixels = new byte[256 * 256 * 4];
+                var highResolutionIcon = BitmapSource.Create(256, 256, 96, 96, PixelFormats.Bgra32, null, pixels, 256 * 4);
+                highResolutionIcon.Freeze();
+                var fake = new FakeRecycleBin { Icon = highResolutionIcon };
                 var settings = new DockSettings { ShowRecycleBin = true, Entries = [new(Guid.NewGuid(), temporary), new(Guid.NewGuid(), "", true)] };
                 var window = new DockWindow(settings, new SettingsStore(Path.Combine(temporary, "recycle.json")), fake);
                 try
@@ -319,15 +339,21 @@ internal static class Program
                     }
                     Refresh();
                     Check(Label().Contains("indisponible"));
+                    var displayedIcon = (Image)button.Content;
+                    Check(ReferenceEquals(displayedIcon.Source, highResolutionIcon) && highResolutionIcon.IsFrozen);
+                    Check(displayedIcon.Width == 48 && displayedIcon.Height == 48 && highResolutionIcon.PixelWidth == 256);
+                    Check(RenderOptions.GetBitmapScalingMode(displayedIcon) == BitmapScalingMode.HighQuality);
                     fake.EmptyState = true;
                     Refresh();
                     Check(Label() == "Corbeille vide");
                     fake.EmptyState = false;
                     Refresh();
                     Check(Label() == "Corbeille pleine");
+                    fake.Icon = null;
                     fake.EmptyState = null;
                     Refresh();
                     Check(Label() == "Corbeille pleine");
+                    Check(ReferenceEquals(((Image)button.Content).Source, highResolutionIcon));
                     fake.ThrowOnRead = true;
                     Refresh();
                     Check(Label() == "Corbeille pleine" && fake.MaximumConcurrentReads == 1 && fake.Reads == 5);
@@ -926,6 +952,42 @@ internal static class Program
             }
             if (args.Length == 2 && args[0] == "--preview")
             {
+                Run("Stock recycle bin icons are high resolution, frozen and cached for both states", () =>
+                {
+                    var task = StaWorker.RunAsync(_ =>
+                    {
+                        var service = new RecycleBinService();
+                        return new[] { true, false }.Select(empty =>
+                        {
+                            var icon = service.GetIcon(empty);
+                            Check(icon is { PixelWidth: 256, PixelHeight: 256, IsFrozen: true });
+                            Check(ReferenceEquals(icon, service.GetIcon(empty)));
+                            var standard = RecycleBinService.LoadStandardIcon(empty);
+                            Check(standard is { IsFrozen: true });
+                            return (Empty: empty, Icon: icon!, Standard: standard!);
+                        }).ToArray();
+                    }, default);
+                    PumpUntil(() => task.IsCompleted);
+                    Directory.CreateDirectory(args[1]);
+                    foreach (var state in task.GetAwaiter().GetResult())
+                    foreach (var scale in new[] { 1.0, 1.5, 2.0 })
+                    {
+                        // Standard icon on the left, jumbo icon on the right, at the actual dock size.
+                        var panel = new StackPanel { Orientation = Orientation.Horizontal, Background = new SolidColorBrush(Color.FromRgb(27, 30, 39)) };
+                        foreach (var source in new[] { state.Standard, state.Icon })
+                        {
+                            var image = new Image { Source = source, Width = 48, Height = 48, Margin = new Thickness(12), Stretch = Stretch.Uniform };
+                            RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+                            panel.Children.Add(image);
+                        }
+                        panel.Measure(new Size(144, 72)); panel.Arrange(new Rect(0, 0, 144, 72)); panel.UpdateLayout();
+                        var bitmap = new RenderTargetBitmap((int)(144 * scale), (int)(72 * scale), 96 * scale, 96 * scale, PixelFormats.Pbgra32);
+                        bitmap.Render(panel);
+                        var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                        using var stream = File.Create(Path.Combine(args[1], $"recycle-{(state.Empty ? "empty" : "full")}-{scale * 100:0}.png"));
+                        encoder.Save(stream);
+                    }
+                });
                 Run("Render populated and empty WPF docks", () =>
                 {
                     Directory.CreateDirectory(args[1]);
@@ -1009,6 +1071,7 @@ internal static class Program
     {
         internal bool? EmptyState;
         internal bool ThrowOnRead;
+        internal ImageSource? Icon;
         internal int Reads, Opens, Empties, MaximumConcurrentReads;
         private int concurrentReads;
         public RecycleBinSnapshot Read()
@@ -1021,7 +1084,7 @@ internal static class Program
                 Check(Thread.CurrentThread.GetApartmentState() == ApartmentState.STA);
                 Thread.Sleep(30);
                 if (ThrowOnRead) throw new IOException("Simulated unavailable recycle bin");
-                return new(EmptyState, null);
+                return new(EmptyState, Icon);
             }
             finally { Interlocked.Decrement(ref concurrentReads); }
         }
