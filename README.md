@@ -1,145 +1,32 @@
 # WinDock
 
-Launcher natif pour Windows 10/11 x64, en version 0.0.1, écrit en C# / WPF (.NET 10).
+Vos applications et dossiers favoris, à portée de clic dans un dock discret pour Windows.
 
-## Essayer
+![Aperçu de WinDock avec des applications, un dossier, un séparateur et la corbeille](docs/images/dock.png)
 
-Deux formats portables sont disponibles pour Windows x64, sans installation de .NET ni droits administrateur :
+**[Télécharger WinDock](https://github.com/morganbksys-pixel/WinDock/releases/latest)**
 
-- **EXE autonome** : placez `WinDock.exe` dans un dossier permanent puis lancez-le. Conservez ce nom pour le démarrage automatique. Le runtime .NET est inclus ; ses bibliothèques natives sont extraites au premier lancement.
-- **ZIP portable** (`WinDock-0.0.1-win-x64.zip`) : décompressez l’archive dans un dossier permanent puis lancez `WinDock.exe`. Conservez tous les fichiers extraits ensemble : ils comprennent le runtime .NET.
+Pour commencer, choisissez **WinDock.exe**, l’EXE autonome prêt à lancer. Vous préférez une archive ? Le **ZIP portable** est disponible sur la même page : décompressez-le et gardez tous ses fichiers ensemble.
 
-Le numéro de version est affiché en bas de **Réglages**. Les commandes de publication des deux formats sont indiquées ci-dessous.
+## Vos raccourcis, à votre façon
 
-Le dépôt Git contient les sources, pas l’exécutable ni le runtime. Après un clonage, utilisez les commandes de développement ci-dessous pour lancer le projet ou produire le dossier portable.
+- **Ajoutez vos favoris** depuis le catalogue des applications classiques et Microsoft Store, ou déposez vos raccourcis et dossiers depuis l’Explorateur.
+- **Organisez le dock** par glisser-déposer et séparez vos applications en groupes.
+- **Gardez votre écran dégagé** avec le masquage automatique ; survolez la petite barre pour retrouver le dock, ou choisissez de le garder visible.
+- **Choisissez sa place** sur le bord et l’écran qui vous conviennent.
+- **Repérez les applications ouvertes** grâce au point vert et demandez la fermeture de leurs fenêtres depuis le clic droit.
 
-### Mettre à jour
+## Démarrer en trois étapes
 
-Quittez WinDock via son menu contextuel. Pour l’EXE autonome, remplacez `WinDock.exe` par la nouvelle version. Pour le ZIP portable, remplacez l’ensemble des fichiers du dossier par ceux de la nouvelle archive. Les réglages et raccourcis sont conservés séparément dans `%LocalAppData%\WinDock` : ne supprimez pas ce dossier lors de la mise à jour. Relancez `WinDock.exe` et vérifiez la version dans **Réglages**. Si vous changez l’emplacement du dossier portable, désactivez puis réactivez le démarrage automatique depuis le nouvel emplacement.
+1. **Téléchargez et lancez** `WinDock.exe` depuis un dossier permanent.
+2. **Ajoutez vos applications** avec **Clic droit → Ajouter…**, ou glissez vos raccourcis sur le dock.
+3. **Personnalisez-le** avec **Clic droit → Réglages** : bord, écran, opacité, masquage automatique et corbeille.
 
-### Utilisation
+Un clic lance une application. Faites glisser une icône pour la déplacer ; pour la retirer, sortez-la du dock jusqu’à voir la corbeille rouge. Vos fichiers d’origine sont conservés.
 
-Le dock apparaît initialement en bas de l’écran principal. Après masquage, une **fine barre arrondie** indique sa position, juste au-dessus de la barre des tâches si celle-ci est visible. Elle est discrète au repos, devient plus opaque à l’approche du pointeur et révèle le dock après 150 ms de survol. Sa zone de détection est plus large que la barre pour faciliter le geste. Le dock disparaît 600 ms après le départ du pointeur. L’indicateur s’oriente verticalement sur les bords gauche et droit et disparaît en plein écran.
+## Pour aller plus loin
 
-- Déposez des raccourcis `.lnk`, des exécutables `.exe` ou des dossiers depuis l’Explorateur. Les doublons de chemin sont ignorés.
-- **Clic droit → Ajouter…** ouvre **Ajouter au dock** : recherchez une application (sans distinction de casse ou d’accents), cochez plusieurs éléments et cliquez sur **Ajouter la sélection**. Les applications déjà présentes sont signalées. **Actualiser** recharge la liste. Lorsque le dock est vide, le texte **Clic droit pour ajouter** indique où ouvrir ce menu ; le glisser-déposer reste disponible.
-- Le dernier catalogue et ses icônes sont conservés entre les démarrages. La fenêtre affiche ce cache puis actualise les applications en arrière-plan, en conservant recherche et sélection. Vous pouvez continuer à ajouter des applications pendant l’actualisation. Fermer la fenêtre laisse cette actualisation terminer.
-- Le catalogue regroupe les applications classiques et Microsoft Store connues de Windows (`AppsFolder`), complétées par les raccourcis du menu Démarrer. Il ne recense pas tous les exécutables du disque. Les boutons **Ajout manuel…**, **Ajouter un dossier…** et **Ajouter un séparateur** restent accessibles.
-- **Ajouter un séparateur**, depuis le catalogue ou le clic droit, crée une ligne entre les groupes. Depuis une icône, elle est ajoutée juste après celle-ci. Faites glisser les séparateurs pour les déplacer ; le clic droit permet de les retirer.
-- Cliquez sur une icône pour lancer sa cible ; faites-la glisser pour changer son ordre. Les raccourcis `.lnk` sont copiés dans les données de WinDock avec leurs propriétés : vous pouvez supprimer le raccourci du bureau après l’ajout.
-- **Clic droit → Modifier / réparer…** permet de changer le nom, la cible, les arguments et le dossier de travail. Les paramètres sont préremplis ; les arguments saisis remplacent les anciens. Un remplacement par un autre `.lnk` reprend ses paramètres. Annuler ne change rien, et enregistrer conserve la position dans le dock.
-- Un point orange indique une cible introuvable. Un clic propose **Choisir une nouvelle cible**. Les raccourcis spéciaux non éditables sont conservés tels quels ; choisissez un exécutable ou un autre raccourci pour modifier leurs paramètres.
-- Un petit point vert en bas à droite indique qu’un processus correspondant à l’exécutable ou à l’identité Windows de l’application est lancé, même en arrière-plan. L’état est actualisé environ toutes les 1,5 secondes. Les dossiers et séparateurs n’ont pas d’indicateur. Certains lanceurs intermédiaires ou processus dont Windows interdit la lecture peuvent ne pas être reconnus. Explorer seul ne déclenche jamais le point vert d’une application Store.
-- Pendant un glisser-déposer, l’élément déplacé s’atténue et une ligne bleue montre l’emplacement d’insertion. Le dépôt de nouveaux raccourcis respecte aussi ce repère.
-- Pour retirer une application, un dossier ou un séparateur, faites-le glisser à l’extérieur du dock : au-delà d’une marge de 24 pixels WPF, une corbeille rouge **Retirer du dock** apparaît près du pointeur. Relâchez pour retirer l’entrée. Revenez dans le dock pour réordonner, ou appuyez sur Échap pour annuler. Relâcher dans la petite marge extérieure annule également le déplacement. Les fichiers d’origine ne sont jamais supprimés.
-- Le clic droit propose **Retirer du dock**, **Réglages** et **Quitter WinDock**. Retirer une entrée ne supprime pas le fichier.
-- Les réglages permettent de choisir un bord et un écran. Si cet écran est débranché, le dock revient sur l’écran principal ; il retrouve l’écran choisi lorsque celui-ci revient.
-- Dans **Réglages**, le curseur **Opacité du fond** va de 10 % à 100 %, avec aperçu immédiat. Les icônes gardent leur opacité. La valeur est enregistrée à la fermeture des réglages.
-- **Masquage automatique**, activé par défaut, peut être désactivé dans les réglages : le dock reste alors visible au-dessus des fenêtres ordinaires, sans réserver d’espace. Il disparaît en plein écran et réapparaît à sa fermeture. L’indicateur de bord est désactivé dans ce mode.
-- **Afficher la corbeille**, désactivé par défaut, ajoute la corbeille Windows en fin de dock. Son icône vide ou pleine est actualisée toutes les deux secondes. Cliquez pour l’ouvrir ; **Vider la corbeille…** au clic droit utilise la confirmation Windows. La corbeille ne se déplace pas et n’accepte pas les dépôts ; retirez-la avec l’interrupteur des réglages. Une lecture indisponible conserve le dernier état connu.
-- Au survol, les libellés s’affichent centrés sous l’icône sur un fond opaque arrondi, ou au-dessus lorsque l’espace manque. Les noms longs reviennent à la ligne.
-- Les réglages s’ouvrent au premier plan et restent défilables sur les petits écrans ; ils ne restent pas devant les autres applications lorsque vous changez de fenêtre.
-- Les menus se ferment au clic extérieur, lors d’un changement de fenêtre ou avec Échap.
-- Le dock grandit et rétrécit avec ses entrées, sans bouton d’ajout. À la limite de l’écran, les icônes se réduisent proportionnellement pour rester toutes visibles, sans défilement.
+- [Guide d’utilisation](docs/UTILISATION.md) : raccourcis, réglages, mises à jour et limites.
+- [Développement et publication](docs/DEVELOPPEMENT.md) : compiler, tester et produire les livrables.
 
-Le dock n’apparaît pas devant une fenêtre au premier plan couvrant tout l’écran. Son apparition ne prend pas le focus clavier. Les réglages et sélecteurs de fichiers sont des fenêtres interactives normales.
-
-## Démarrage automatique
-
-Dans **Réglages**, cochez **Lancer WinDock au démarrage de Windows** pour lancer le dock à l’ouverture de votre session. Cette option est désactivée par défaut et prend effet immédiatement. Elle crée un raccourci `WinDock.lnk` dans le dossier Démarrage de votre compte, sans droits administrateur. Décochez-la avant de supprimer la version portable. Après un déplacement du dossier, désactivez puis réactivez l’option depuis le nouvel emplacement. Si Windows a désactivé cette entrée dans ses applications de démarrage, réactivez-la également dans les paramètres Windows.
-
-## Données et limites
-
-La détection des applications ouvertes reconnaît aussi les lanceurs Squirrel (par exemple Claude Desktop) dont le processus utilise un sous-dossier `app-<version>` de la même installation. Un exécutable homonyme situé ailleurs, comme Claude en ligne de commande, reste distinct.
-
-Un clic droit sur une application ouverte propose **Fermer l’application**, ou **Fermer toutes les fenêtres** si plusieurs fenêtres sont reconnues, y compris minimisées. L’application peut demander un enregistrement, annuler ou ignorer la fermeture ; aucun processus n’est forcé à quitter. Sans fenêtre identifiable, cette commande est absente. Plusieurs raccourcis vers le même exécutable partagent cette action, quels que soient leurs arguments. Le point vert reste présent tant que le processus est actif.
-
-Les données sont enregistrées dans `%LocalAppData%\WinDock\settings.json`, indépendamment du dossier portable. Les copies de raccourcis sont dans le sous-dossier `Shortcuts`. Les anciennes entrées `.lnk` encore accessibles sont copiées au démarrage ; celles déjà supprimées restent réparables. Une configuration invalide est copiée dans un fichier `settings.json.invalid-*` avant le retour aux valeurs par défaut. La modification ou la suppression d’une entrée conserve l’ancienne version si la sauvegarde échoue. Les raccourcis d’origine ne sont jamais modifiés par WinDock.
-
-Les applications du catalogue utilisent une copie du raccourci classique lorsqu’il est identifiable, avec ses arguments et son dossier de travail. Sinon, WinDock crée un raccourci vers leur cible Shell Windows, sans lancer un exécutable interne à WindowsApps. Ces cibles spéciales permettent de modifier le nom ou de remplacer la cible, mais pas les arguments. Une application absente d’un catalogue lu avec succès est signalée comme manquante ; une erreur de lecture du catalogue ne suffit pas à la déclarer supprimée.
-
-Le cache est stocké séparément dans `%LocalAppData%\WinDock\CatalogCache\catalog.json`, avec ses icônes PNG intégrées. Une lecture Windows incomplète ou indisponible conserve le dernier catalogue complet. Un cache illisible est reconstruit ; il n’est jamais utilisé comme preuve de désinstallation. Le tout premier chargement nécessite toujours l’interrogation de Windows.
-
-WinDock ne modifie ni le bureau ni la barre des tâches et n’exige pas de droits administrateur. Le démarrage automatique est facultatif. Une seconde instance quitte immédiatement. Elle ne gère pas les icônes de notification. L’exécutable n’est pas signé.
-
-## Développement
-
-Prérequis : Windows x64 et SDK .NET 10. Aucun paquet applicatif tiers.
-
-Depuis la racine du dépôt, pour lancer l’application depuis les sources :
-
-```powershell
-dotnet run --project src/WinDock -c Release
-```
-
-Pour compiler la solution et exécuter les tests :
-
-```powershell
-dotnet build WinDock.slnx -c Release -m:1
-dotnet run --project tests/WinDock.Tests -c Release -p:BuildInParallel=false
-```
-
-Les tests sont un exécutable autonome sans dépendance de framework de test. Ils retournent un code non nul en cas d’échec. Ils couvrent la persistance, les configurations invalides, le réordonnancement, les formats acceptés, le placement sur les quatre bords, les coordonnées négatives, la mise à l’échelle, le débordement, l’initialisation WPF et le lancement effectif d’un raccourci avec arguments et répertoire de travail contenant des espaces et accents. Le test de raccourci lance brièvement un processus de test qui écrit uniquement dans son dossier temporaire.
-
-Ils vérifient aussi les transitions du mode fixe et du plein écran, la superposition des menus, la restauration des réglages au premier plan, leur défilement, les interrupteurs persistés et le placement des libellés. Les états et actions de la corbeille sont testés avec un service simulé ; le démarrage automatique utilise un dossier temporaire. Aucun test ne vide la corbeille réelle ni ne modifie le démarrage automatique du compte. Le mode `--preview` produit les aperçus du dock, des réglages et d’un libellé ; il lit également l’état et l’icône système de la corbeille réelle sans en modifier le contenu.
-
-Les tests WPF et Shell doivent s’exécuter dans une session Windows interactive. Les sorties `bin`, `obj`, `artifacts` et les préférences des IDE sont exclues du dépôt. Les données utilisateur restent dans `%LocalAppData%\WinDock`.
-
-Pour générer les aperçus de l’interface réelle :
-
-```powershell
-dotnet run --project tests/WinDock.Tests -c Release --no-build -- --preview artifacts/previews
-```
-
-Pour tester le catalogue réel, la persistance des raccourcis et l’identité des processus (ce test ouvre la Calculatrice) :
-
-```powershell
-dotnet run --project tests/WinDock.Tests -c Release --no-build -- --catalog-smoke artifacts/previews
-```
-
-### Produire une livraison
-
-Après compilation, tests et revue des aperçus, publiez dans des dossiers neufs. La version est lue depuis le projet ; gardez le bandeau de `QUICKSTART.txt` aligné avant de publier. La première publication peut nécessiter le téléchargement des packs runtime Microsoft.
-
-Pour produire le dossier portable et archiver son contenu complet :
-
-```powershell
-$releaseVersion = ([xml](Get-Content src/WinDock/WinDock.csproj -Raw)).Project.PropertyGroup.Version
-$portableDirectory = "artifacts/WinDock-$releaseVersion-win-x64"
-$portableArchive = "$portableDirectory.zip"
-if ((Test-Path $portableDirectory) -or (Test-Path $portableArchive)) { throw "Cette livraison existe déjà. Utilisez une nouvelle version ou un dossier de sortie neuf." }
-dotnet publish src/WinDock/WinDock.csproj -c Release -r win-x64 --self-contained true -o $portableDirectory -m:1 -p:DebugType=None -p:DebugSymbols=false
-if ($LASTEXITCODE -ne 0) { throw "Échec de la publication portable." }
-Compress-Archive -Path "$portableDirectory/*" -DestinationPath $portableArchive
-```
-
-Pour produire également l’EXE autonome dans un dossier distinct :
-
-```powershell
-$releaseVersion = ([xml](Get-Content src/WinDock/WinDock.csproj -Raw)).Project.PropertyGroup.Version
-$singleFileDirectory = "artifacts/WinDock-$releaseVersion-win-x64-single-file"
-if (Test-Path $singleFileDirectory) { throw "Utilisez un dossier de sortie neuf." }
-dotnet publish src/WinDock/WinDock.csproj -c Release -r win-x64 --self-contained true -o $singleFileDirectory -m:1 -p:DebugType=None -p:DebugSymbols=false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
-if ($LASTEXITCODE -ne 0) { throw "Échec de la publication de l’EXE autonome." }
-```
-
-Distribuez le ZIP complet, ou le `WinDock.exe` du dossier `single-file` accompagné du guide `LIRE-MOI.txt`. Ne distribuez pas seul l’exécutable du dossier portable classique. Les fichiers générés restent dans `artifacts/`, hors Git. Indiquez dans les notes de livraison les vérifications réalisées, les essais matériels encore à effectuer et l’absence de signature de l’exécutable.
-
-Après validation d’une nouvelle livraison, vous pouvez supprimer les anciennes builds, leurs ZIP et les anciens dossiers d’aperçus dans `artifacts/`. Conservez les deux formats de la livraison courante et `artifacts/previews`. Les dossiers `dotnet-home` et `nuget` sont des caches de développement ; les conserver évite de retélécharger les packs lors des prochaines publications.
-
-## Recette interactive
-
-À vérifier sur le poste d’utilisation ; les tests de géométrie ne remplacent pas ces essais matériels :
-
-- Tester les quatre bords avec la barre des tâches visible et masquée automatiquement.
-- Déplacer le dock entre des écrans à 100 %, 150 % et 200 %, puis débrancher et rebrancher l’écran sélectionné.
-- Saisir du texte dans une autre application, révéler le dock et vérifier que la saisie garde son focus.
-- Vérifier le masquage en plein écran, la temporisation et le maintien pendant les menus, les sélecteurs et les glisser-déposer.
-- Ajouter des applications et dossiers, changer l’ordre, relancer WinDock et vérifier leur conservation.
-- Supprimer ou déplacer une cible hors du dock, puis vérifier le message au lancement.
-- Lancer deux fois WinDock et vérifier qu’un seul dock demeure.
-- Vérifier le mode fixe, le masquage en plein écran et le retour automatique, avec les écrans à DPI mixtes.
-- Vérifier le positionnement des libellés aux quatre bords, leur fermeture pendant les menus et les déplacements, et le défilement des réglages à fort DPI.
-- Pour tester la corbeille, utiliser uniquement un fichier jetable créé pour cet essai : contrôler les états vide/plein et l’annulation de la confirmation Windows. Ne confirmer le vidage que si tout le contenu de la corbeille peut être supprimé. Les tests automatisés ne vident jamais la corbeille réelle.
-
-Le calcul de placement et le stockage sont dans `WinDock.Core`. L’interface et les appels Windows sont dans `WinDock`.
+WinDock fonctionne sur **Windows 10/11 x64**, sans installation de .NET ni droits administrateur. L’exécutable n’est pas signé. Vos réglages et raccourcis sont conservés séparément dans `%LocalAppData%\WinDock`, y compris lors d’une mise à jour.
