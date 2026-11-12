@@ -4,15 +4,18 @@ Launcher natif pour Windows 10/11 x64, en version 0.0.1, écrit en C# / WPF (.NE
 
 ## Essayer
 
-Si vous disposez du ZIP portable, décompressez-le dans un dossier permanent puis lancez `WinDock.exe`. Conservez tous les fichiers du dossier : le runtime .NET est inclus, aucune installation n’est nécessaire. Le numéro de version est affiché en bas de **Réglages**.
+Deux formats portables sont disponibles pour Windows x64, sans installation de .NET ni droits administrateur :
 
-Après une compilation portable avec la commande ci-dessous, l’exécutable se trouve dans `artifacts/WinDock-win-x64/WinDock.exe`. Les archives de release portent un nom versionné, par exemple `WinDock-0.0.1-win-x64.zip`.
+- **EXE autonome** : placez `WinDock.exe` dans un dossier permanent puis lancez-le. Conservez ce nom pour le démarrage automatique. Le runtime .NET est inclus ; ses bibliothèques natives sont extraites au premier lancement.
+- **ZIP portable** (`WinDock-0.0.1-win-x64.zip`) : décompressez l’archive dans un dossier permanent puis lancez `WinDock.exe`. Conservez tous les fichiers extraits ensemble : ils comprennent le runtime .NET.
+
+Le numéro de version est affiché en bas de **Réglages**. Les commandes de publication des deux formats sont indiquées ci-dessous.
 
 Le dépôt Git contient les sources, pas l’exécutable ni le runtime. Après un clonage, utilisez les commandes de développement ci-dessous pour lancer le projet ou produire le dossier portable.
 
 ### Mettre à jour
 
-Quittez WinDock via son menu contextuel, puis remplacez les fichiers du dossier portable par ceux de la nouvelle archive. Les réglages et raccourcis sont conservés séparément dans `%LocalAppData%\WinDock` : ne supprimez pas ce dossier lors de la mise à jour. Relancez `WinDock.exe` et vérifiez la version dans **Réglages**. Si vous changez l’emplacement du dossier portable, désactivez puis réactivez le démarrage automatique depuis le nouvel emplacement.
+Quittez WinDock via son menu contextuel. Pour l’EXE autonome, remplacez `WinDock.exe` par la nouvelle version. Pour le ZIP portable, remplacez l’ensemble des fichiers du dossier par ceux de la nouvelle archive. Les réglages et raccourcis sont conservés séparément dans `%LocalAppData%\WinDock` : ne supprimez pas ce dossier lors de la mise à jour. Relancez `WinDock.exe` et vérifiez la version dans **Réglages**. Si vous changez l’emplacement du dossier portable, désactivez puis réactivez le démarrage automatique depuis le nouvel emplacement.
 
 ### Utilisation
 
@@ -94,11 +97,35 @@ Pour tester le catalogue réel, la persistance des raccourcis et l’identité d
 dotnet run --project tests/WinDock.Tests -c Release --no-build -- --catalog-smoke artifacts/previews
 ```
 
-Pour produire le dossier portable (le premier lancement peut nécessiter le téléchargement des packs runtime Microsoft) :
+### Produire une livraison
+
+Après compilation, tests et revue des aperçus, publiez dans des dossiers neufs. La version est lue depuis le projet ; gardez le bandeau de `QUICKSTART.txt` aligné avant de publier. La première publication peut nécessiter le téléchargement des packs runtime Microsoft.
+
+Pour produire le dossier portable et archiver son contenu complet :
 
 ```powershell
-dotnet publish src/WinDock/WinDock.csproj -c Release -r win-x64 --self-contained true -o artifacts/WinDock-win-x64 -m:1 -p:DebugType=None -p:DebugSymbols=false
+$releaseVersion = ([xml](Get-Content src/WinDock/WinDock.csproj -Raw)).Project.PropertyGroup.Version
+$portableDirectory = "artifacts/WinDock-$releaseVersion-win-x64"
+$portableArchive = "$portableDirectory.zip"
+if ((Test-Path $portableDirectory) -or (Test-Path $portableArchive)) { throw "Cette livraison existe déjà. Utilisez une nouvelle version ou un dossier de sortie neuf." }
+dotnet publish src/WinDock/WinDock.csproj -c Release -r win-x64 --self-contained true -o $portableDirectory -m:1 -p:DebugType=None -p:DebugSymbols=false
+if ($LASTEXITCODE -ne 0) { throw "Échec de la publication portable." }
+Compress-Archive -Path "$portableDirectory/*" -DestinationPath $portableArchive
 ```
+
+Pour produire également l’EXE autonome dans un dossier distinct :
+
+```powershell
+$releaseVersion = ([xml](Get-Content src/WinDock/WinDock.csproj -Raw)).Project.PropertyGroup.Version
+$singleFileDirectory = "artifacts/WinDock-$releaseVersion-win-x64-single-file"
+if (Test-Path $singleFileDirectory) { throw "Utilisez un dossier de sortie neuf." }
+dotnet publish src/WinDock/WinDock.csproj -c Release -r win-x64 --self-contained true -o $singleFileDirectory -m:1 -p:DebugType=None -p:DebugSymbols=false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
+if ($LASTEXITCODE -ne 0) { throw "Échec de la publication de l’EXE autonome." }
+```
+
+Distribuez le ZIP complet, ou le `WinDock.exe` du dossier `single-file` accompagné du guide `LIRE-MOI.txt`. Ne distribuez pas seul l’exécutable du dossier portable classique. Les fichiers générés restent dans `artifacts/`, hors Git. Indiquez dans les notes de livraison les vérifications réalisées, les essais matériels encore à effectuer et l’absence de signature de l’exécutable.
+
+Après validation d’une nouvelle livraison, vous pouvez supprimer les anciennes builds, leurs ZIP et les anciens dossiers d’aperçus dans `artifacts/`. Conservez les deux formats de la livraison courante et `artifacts/previews`. Les dossiers `dotnet-home` et `nuget` sont des caches de développement ; les conserver évite de retélécharger les packs lors des prochaines publications.
 
 ## Recette interactive
 

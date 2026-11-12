@@ -970,7 +970,10 @@ internal static class Program
                                 settingsWindow.UpdateLayout();
                                 var settingsPanel = (StackPanel)((ScrollViewer)settingsWindow.Content).Content;
                                 Check(settingsWindow.Icon is BitmapSource settingsIcon && settingsIcon.PixelWidth == 256 && settingsIcon.PixelHeight == 256);
-                                Check(settingsPanel.Children.OfType<TextBlock>().Any(text => text.Text.StartsWith("WinDock — Version 0.1.0-beta.")));
+                                var version = typeof(App).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+                                    .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().Single().InformationalVersion.Split('+')[0];
+                                Check(!string.IsNullOrWhiteSpace(version));
+                                Check(settingsPanel.Children.OfType<TextBlock>().Any(text => text.Text == $"WinDock — Version {version}"));
                                 var settingsBitmap = new RenderTargetBitmap((int)Math.Ceiling(settingsWindow.ActualWidth), (int)Math.Ceiling(settingsWindow.ActualHeight), 96, 96, PixelFormats.Pbgra32);
                                 settingsBitmap.Render(settingsWindow);
                                 var settingsEncoder = new PngBitmapEncoder();

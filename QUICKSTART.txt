@@ -1,6 +1,13 @@
 WINDOCK — 0.0.1 — WINDOWS X64
 
-1. Lancez WinDock.exe. Gardez tous les fichiers du dossier ensemble.
+Deux formats portables, avec le runtime .NET inclus :
+- EXE autonome : placez WinDock.exe dans un dossier permanent.
+  Gardez ce nom pour le démarrage automatique. Les bibliothèques natives
+  du runtime sont extraites au premier lancement.
+- ZIP portable : décompressez l’archive dans un dossier permanent.
+  Gardez tous les fichiers extraits ensemble.
+
+1. Lancez WinDock.exe depuis ce dossier.
 2. Déposez des raccourcis .lnk, des applications .exe ou des dossiers.
 3. Clic droit > Ajouter… ouvre le catalogue des applications classiques et Microsoft Store.
    Recherchez, cochez les applications puis cliquez sur Ajouter la sélection.
@@ -48,8 +55,16 @@ WINDOCK — 0.0.1 — WINDOWS X64
     Le numéro de version apparaît en bas de cette fenêtre.
 
 Aucune installation ou élévation administrateur nécessaire.
+Exécutable non signé.
 Le programme ne modifie pas la barre des tâches ni les icônes du bureau.
 Les préférences sont conservées dans %LocalAppData%\WinDock\settings.json.
+
+Mise à jour : quittez WinDock via son menu contextuel. Remplacez l’EXE
+autonome, ou tous les fichiers du dossier pour une livraison ZIP.
+Ne supprimez pas %LocalAppData%\WinDock : réglages et raccourcis y restent.
+Relancez WinDock.exe et vérifiez la version dans Réglages.
+Si le dossier change, désactivez puis réactivez le démarrage automatique
+depuis le nouvel emplacement.
 
 Launcher avec fermeture des fenêtres reconnues, sans remplacement de la barre des tâches
 ni de la zone de notification Windows. Une seule instance active à la fois.
