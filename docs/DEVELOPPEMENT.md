@@ -75,7 +75,7 @@ dotnet publish src/WinDock/WinDock.csproj -c Release -r win-x64 --self-contained
 if ($LASTEXITCODE -ne 0) { throw "Échec de la publication de l’EXE autonome." }
 ```
 
-Distribuez le ZIP complet, ou le `WinDock.exe` du dossier `single-file` accompagné du guide `LIRE-MOI.txt`. Ne distribuez pas seul l’exécutable du dossier portable classique. Les fichiers générés restent dans `artifacts/`, hors Git. Indiquez dans les notes de livraison les vérifications réalisées, les essais matériels encore à effectuer et l’absence de signature de l’exécutable.
+Distribuez le ZIP complet, ou le `WinDock.exe` du dossier `single-file`. Les instructions sont dans le README et le guide d’utilisation ; aucun fichier `LIRE-MOI.txt` n’est publié. Ne distribuez pas seul l’exécutable du dossier portable classique. Les fichiers générés restent dans `artifacts/`, hors Git. Indiquez dans les notes de livraison les vérifications réalisées, les essais matériels encore à effectuer et l’absence de signature de l’exécutable.
 
 Après validation d’une nouvelle livraison, vous pouvez supprimer les anciennes builds, leurs ZIP et les anciens dossiers d’aperçus dans `artifacts/`. Conservez les deux formats de la livraison courante et `artifacts/previews`. Les dossiers `dotnet-home` et `nuget` sont des caches de développement ; les conserver évite de retélécharger les packs lors des prochaines publications.
 

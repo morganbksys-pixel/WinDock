@@ -10,5 +10,4 @@
   </PropertyGroup>
   <ItemGroup><ProjectReference Include="../WinDock.Core/WinDock.Core.csproj" /></ItemGroup>
   <ItemGroup><Resource Include="Assets/WinDock.ico" /></ItemGroup>
-  <ItemGroup><Content Include="../../QUICKSTART.txt" Link="LIRE-MOI.txt" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>
 </Project>
