@@ -13,7 +13,7 @@ using WinDock.Core;
 
 namespace WinDock;
 
-public sealed class DockWindow : Window
+public sealed partial class DockWindow : Window
 {
     private const string DragFormat = "WinDock.EntryId";
     private readonly DockSettings settings;
@@ -38,6 +38,10 @@ public sealed class DockWindow : Window
     private ContextMenuDismissal? menuDismissal;
     private readonly RunningApplications runningApplications = new();
     private readonly IApplicationWindows applicationWindows;
+    private readonly IDefaultDockService defaultDock;
+    private bool restoringDefaults;
+    private readonly HashSet<Guid> openingEntries = [];
+    private int openGeneration;
     private readonly Dictionary<Guid, Ellipse> runningIndicators = [];
     private HashSet<Guid> runningEntries = [];
     private bool checkingRunning, closed;
@@ -57,7 +61,7 @@ public sealed class DockWindow : Window
     public DockWindow(DockSettings settings, SettingsStore store) : this(settings, store, new RecycleBinService()) { }
 
     internal DockWindow(DockSettings settings, SettingsStore store, IRecycleBinService recycleBin,
-        IApplicationWindows? applicationWindows = null)
+        IApplicationWindows? applicationWindows = null, IDefaultDockService? defaultDock = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(store);
@@ -65,6 +69,7 @@ public sealed class DockWindow : Window
         this.store = store;
         this.recycleBin = recycleBin;
         this.applicationWindows = applicationWindows ?? new ApplicationWindows();
+        this.defaultDock = defaultDock ?? new DefaultDockService(store);
         shortcuts = new ManagedShortcuts(store);
         dockBackground.Opacity = settings.BackgroundOpacity;
         Title = "WinDock";
@@ -82,19 +87,14 @@ public sealed class DockWindow : Window
         Topmost = true;
         AllowDrop = true;
         fittedItems.Child = items;
-        Content = new Border
-        {
-            Background = dockBackground,
-            BorderBrush = new SolidColorBrush(Color.FromArgb(45, 255, 255, 255)),
-            BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(18),
-            Padding = new Thickness(8), Child = fittedItems
-        };
+        Content = DockAppearance.Surface(dockBackground, fittedItems, new Thickness(8));
         ContextMenu = CreateMenu(null);
         PreviewDragOver += OnDragOver;
         Drop += OnDrop;
         DragLeave += (_, e) =>
         {
-            if (!new Rect(RenderSize).Contains(e.GetPosition(this))) items.ShowInsertion(null);
+            if (!new Rect(RenderSize).Contains(e.GetPosition(this)))
+            { items.ShowInsertion(null); ClearDropFeedback(); hoveredGroup = null; }
         };
         SourceInitialized += (_, _) =>
         {
@@ -112,7 +112,7 @@ public sealed class DockWindow : Window
             RefreshPlacement();
             indicator.Show();
         };
-        Closed += (_, _) => { closed = true; CloseLabels(); lifetime.Cancel(); timer.Stop(); if (activeMenu is not null) activeMenu.IsOpen = false; menuDismissal?.Dispose(); indicator?.Close(); settingsWindow?.Close(); };
+        Closed += (_, _) => { closed = true; ClearDropFeedback(); CloseGroup(); CloseLabels(); lifetime.Cancel(); timer.Stop(); if (activeMenu is not null) activeMenu.IsOpen = false; menuDismissal?.Dispose(); indicator?.Close(); settingsWindow?.Close(); };
         RenderItems();
     }
 
@@ -128,9 +128,11 @@ public sealed class DockWindow : Window
 
     private void RefreshPlacement()
     {
+        var previousDisplay = display;
         var displays = Native.Displays();
         display = displays.FirstOrDefault(d => d.Device == settings.MonitorDevice)
             ?? displays.FirstOrDefault(d => d.Primary) ?? displays.FirstOrDefault();
+        if (groupPanel is not null && (display is null || display.Device != previousDisplay?.Device || display.Work != previousDisplay.Work || display.Scale != previousDisplay.Scale || settings.Edge != groupEdge)) CloseGroup();
         if (display is null) return;
         // Measure the actual content rather than duplicating its dimensions.
         items.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
@@ -155,6 +157,9 @@ public sealed class DockWindow : Window
     private void Tick()
     {
         menuDismissal?.Poll();
+        if (!dragging && !externalDrag && groupPanel is { } openPanel)
+            groupDismissal?.Poll(Native.GetForegroundWindow(), openPanel.ShouldDismissOnEscape((Native.GetAsyncKeyState(0x1B) & 0x8000) != 0));
+        UpdateGroupHover();
         var now = Environment.TickCount64;
         if (settings.ShowRecycleBin && !checkingRecycle && !emptyingRecycle && now - lastRecycleCheck >= 2000)
             _ = RefreshRecycleAsync();
@@ -187,6 +192,7 @@ public sealed class DockWindow : Window
 
     internal void UpdateVisibility(bool fullScreen, bool overTrigger, bool overDock, long now)
     {
+        if (fullScreen) CloseGroup();
         if (interactionLocks > 0 || dragging || externalDrag) { outsideSince = triggerSince = 0; return; }
         if (fullScreen)
         {
@@ -240,73 +246,7 @@ public sealed class DockWindow : Window
                 Width = Horizontal ? 236 : 58, Margin = new Thickness(2, 8, 2, 8), FontSize = 12
             });
         }
-        foreach (var entry in settings.Entries)
-        {
-            ImageSource? icon = null;
-            if (!entry.IsSeparator && !icons.TryGetValue(entry.Path, out icon)) icons[entry.Path] = icon = Native.Icon(entry.Path);
-            var button = new Button
-            {
-                Width = entry.IsSeparator && Horizontal ? 22 : 60,
-                Height = entry.IsSeparator && !Horizontal ? 22 : 60, Tag = entry,
-                Focusable = false,
-                Content = entry.IsSeparator ? new Border
-                {
-                    Width = Horizontal ? 1 : 32, Height = Horizontal ? 32 : 1,
-                    Background = new SolidColorBrush(Color.FromArgb(110, 255, 255, 255)),
-                    CornerRadius = new CornerRadius(0.5)
-                } : icon is null
-                    ? new TextBlock { Text = "◇", FontSize = 32 }
-                    : new Image { Source = icon, Width = 48, Height = 48, Stretch = Stretch.Uniform },
-                ContextMenu = CreateMenu(entry)
-            };
-            if (!entry.IsSeparator)
-            {
-                var iconContent = (UIElement)button.Content;
-                button.Content = null;
-                var badge = new Ellipse
-                {
-                    Width = 9, Height = 9, Fill = new SolidColorBrush(Color.FromRgb(65, 218, 119)),
-                    Stroke = new SolidColorBrush(Color.FromRgb(27, 30, 39)), StrokeThickness = 1.5,
-                    HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom,
-                    Margin = new Thickness(0, 0, 1, 1), IsHitTestVisible = false,
-                    Visibility = runningEntries.Contains(entry.Id) || missingEntries.Contains(entry.Id) ? Visibility.Visible : Visibility.Hidden
-                };
-                if (missingEntries.Contains(entry.Id)) badge.Fill = Brushes.Orange;
-                button.Content = new Grid { Width = 48, Height = 48, Children = { iconContent, badge } };
-                runningIndicators[entry.Id] = badge;
-            }
-            AttachLabel(button, entry.IsSeparator ? "Séparateur — glisser pour déplacer" : ManagedShortcuts.Name(entry));
-            if (!entry.IsSeparator) button.Click += (_, _) => Launch(entry);
-            button.PreviewMouseLeftButtonDown += (_, e) => { dragStart = e.GetPosition(this); pressedEntry = entry.Id; };
-            button.PreviewMouseLeftButtonUp += (_, _) => pressedEntry = null;
-            button.PreviewMouseMove += (_, e) =>
-            {
-                var current = e.GetPosition(this);
-                if (e.LeftButton != MouseButtonState.Pressed || pressedEntry != entry.Id || dragging ||
-                    (Math.Abs(current.X - dragStart.X) < SystemParameters.MinimumHorizontalDragDistance &&
-                     Math.Abs(current.Y - dragStart.Y) < SystemParameters.MinimumVerticalDragDistance)) return;
-                dragging = true;
-                CloseLabels();
-                pressedEntry = null;
-                button.Opacity = 0.35;
-                button.RenderTransformOrigin = new Point(0.5, 0.5);
-                button.RenderTransform = new ScaleTransform(0.92, 0.92);
-                try
-                {
-                    if (DragRemoval.Run(button, this, new DataObject(DragFormat, entry.Id.ToString())))
-                    {
-                        try { shortcuts.Commit(settings, settings.Entries.Where(e => e.Id != entry.Id).ToList()); RenderItems(); }
-                        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { ShowNotice(ex.Message); }
-                    }
-                }
-                finally
-                {
-                    button.Opacity = 1; button.RenderTransform = Transform.Identity;
-                    items.ShowInsertion(null); dragging = false; outsideSince = 0;
-                }
-            };
-            items.Children.Add(button);
-        }
+        foreach (var entry in settings.Entries.Where(e => e.GroupId is null)) items.Children.Add(CreateEntryButton(entry));
         if (settings.ShowRecycleBin)
         {
             recycleButton = new Button { Width = 60, Height = 60, Focusable = false, ContextMenu = CreateMenu(null, true) };
@@ -315,6 +255,7 @@ public sealed class DockWindow : Window
             UpdateRecycleButton();
         }
         if (hwnd != 0) RefreshPlacement();
+        RefreshGroupPanel();
     }
 
     private void AttachLabel(Button button, string text) => DockLabels.Attach(button, text,
@@ -322,7 +263,7 @@ public sealed class DockWindow : Window
 
     private void CloseLabels()
     {
-        foreach (var button in items.Children.OfType<Button>())
+        foreach (var button in items.Children.OfType<Button>().Concat(groupPanel?.Items.Children.OfType<Button>() ?? []))
             if (button.ToolTip is ToolTip label) label.IsOpen = false;
     }
 
@@ -378,19 +319,9 @@ public sealed class DockWindow : Window
         var menu = new ContextMenu { StaysOpen = false };
         MenuItem? closeItem = null;
         var generation = 0;
-        ContextMenuDismissal? dismissal = null;
+        ConfigureMenu(menu);
         menu.Opened += async (_, _) =>
         {
-            CloseLabels();
-            if (activeMenu is not null && activeMenu != menu) activeMenu.IsOpen = false;
-            activeMenu = menu;
-            interactionLocks++;
-            try { menuDismissal = dismissal = new ContextMenuDismissal(menu, hwnd); }
-            catch (System.ComponentModel.Win32Exception ex)
-            {
-                menu.IsOpen = false;
-                ShowNotice("Impossible d’ouvrir le menu.\n\n" + ex.Message);
-            }
             var request = ++generation;
             if (closeItem is null || entry is null || !menu.IsOpen) return;
             menu.Items.Remove(closeItem);
@@ -408,13 +339,7 @@ public sealed class DockWindow : Window
             catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
             { /* Unavailable windows must not expose a stale close command. */ }
         };
-        menu.Closed += (_, _) =>
-        {
-            generation++;
-            dismissal?.Dispose(); dismissal = null;
-            if (activeMenu == menu) { menuDismissal = null; activeMenu = null; }
-            interactionLocks--; outsideSince = 0;
-        };
+        menu.Closed += (_, _) => generation++;
         void Item(string title, Action action)
         {
             var item = new MenuItem { Header = title };
@@ -448,7 +373,11 @@ public sealed class DockWindow : Window
                     finally { interactionLocks--; lastRunningCheck = 0; }
                 };
             }
-            if (!entry.IsSeparator) Item("Modifier / réparer…", () => EditEntry(entry));
+            if (!entry.IsSeparator)
+            {
+                Item("Lancer à nouveau", () => Launch(entry));
+                Item("Modifier / réparer…", () => EditEntry(entry));
+            }
             Item("Retirer du dock", () =>
             {
                 try { shortcuts.Commit(settings, settings.Entries.Where(e => e.Id != entry.Id).ToList()); RenderItems(); }
@@ -456,12 +385,13 @@ public sealed class DockWindow : Window
             });
             menu.Items.Add(new Separator());
         }
-        Item("Ajouter…", OpenCatalog);
-        Item("Ajouter un séparateur", () =>
+        if (entry is { IsSeparator: false } && settings.Entries.Any(e => e.IsGroup)) menu.Items.Add(CreateMoveMenu(entry));
+        Item("Ajouter…", () => OpenCatalog(entry?.GroupId));
+        if (entry?.GroupId is null) Item("Ajouter un séparateur", () =>
         {
             var index = entry is null ? settings.Entries.Count : settings.Entries.FindIndex(e => e.Id == entry.Id) + 1;
-            settings.Entries.Insert(index, new(Guid.NewGuid(), "", true));
-            PersistAndRender();
+            var next = settings.Entries.ToList(); next.Insert(index, new(Guid.NewGuid(), "", true));
+            CommitEntries(next);
         });
         menu.Items.Add(new Separator());
         Item("Réglages…", OpenSettings);
@@ -469,10 +399,122 @@ public sealed class DockWindow : Window
         return menu;
     }
 
+    private void ConfigureMenu(ContextMenu menu)
+    {
+        ContextMenuDismissal? dismissal = null;
+        menu.Opened += (_, _) =>
+        {
+            openGeneration++;
+            CloseLabels();
+            if (activeMenu is not null && activeMenu != menu) activeMenu.IsOpen = false;
+            activeMenu = menu;
+            interactionLocks++;
+            try { menuDismissal = dismissal = new ContextMenuDismissal(menu, hwnd); }
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                menu.IsOpen = false;
+                ShowNotice("Impossible d’ouvrir le menu.\n\n" + ex.Message);
+            }
+        };
+        menu.Closed += (_, _) =>
+        {
+            dismissal?.Dispose(); dismissal = null;
+            if (activeMenu == menu) { menuDismissal = null; activeMenu = null; }
+            interactionLocks--; outsideSince = 0;
+        };
+    }
+
+    private bool IsCurrentEntry(DockEntry entry) => !closed && settings.Entries.Contains(entry);
+
+    internal async Task OpenEntryAsync(DockEntry entry, Button button)
+    {
+        if (!IsCurrentEntry(entry) || entry.IsSeparator || entry.IsGroup || !openingEntries.Add(entry.Id)) return;
+        if (entry.GroupId is null) CloseGroup();
+        var request = ++openGeneration;
+        interactionLocks++;
+        try
+        {
+            if (shortcuts.IsMissing(entry)) { OfferRepair(entry); return; }
+            if (Directory.Exists(entry.Path)) { Launch(entry); return; }
+            if (activeMenu is not null) activeMenu.IsOpen = false;
+            var windows = await applicationWindows.ListAsync(entry, lifetime.Token);
+            if (!IsCurrentEntry(entry) || !button.IsLoaded || request != openGeneration) return;
+            if (windows.Count == 0) { CloseGroup(); Launch(entry); }
+            else if (windows.Count == 1) await ActivateEntryWindowAsync(entry, windows[0]);
+            else ShowWindowMenu(entry, button, windows);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            if (IsCurrentEntry(entry) && button.IsLoaded && request == openGeneration)
+                ShowWindowMenu(entry, button, [], true);
+        }
+        finally { openingEntries.Remove(entry.Id); interactionLocks--; outsideSince = 0; }
+    }
+
+    private async Task ActivateEntryWindowAsync(DockEntry entry, ApplicationWindow window)
+    {
+        CloseGroup();
+        if (!IsCurrentEntry(entry)) return;
+        interactionLocks++;
+        try
+        {
+            var result = await applicationWindows.ActivateAsync(entry, window, lifetime.Token);
+            if (!IsCurrentEntry(entry)) return;
+            if (result == WindowActivationResult.Unavailable) ShowNotice("Cette fenêtre n’est plus disponible.");
+            else if (result == WindowActivationResult.Refused) ShowNotice("Windows n’a pas autorisé le passage de cette fenêtre au premier plan.");
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException or InvalidOperationException)
+        { if (IsCurrentEntry(entry)) ShowNotice("Impossible d’activer cette fenêtre.\n\n" + ex.Message); }
+        finally { interactionLocks--; outsideSince = 0; }
+    }
+
+    private void ShowWindowMenu(DockEntry entry, Button button, IReadOnlyList<ApplicationWindow> windows, bool failed = false)
+    {
+        var menu = new ContextMenu
+        {
+            StaysOpen = false, PlacementTarget = button,
+            Placement = settings.Edge switch
+            {
+                DockEdge.Bottom => System.Windows.Controls.Primitives.PlacementMode.Top,
+                DockEdge.Top => System.Windows.Controls.Primitives.PlacementMode.Bottom,
+                DockEdge.Left => System.Windows.Controls.Primitives.PlacementMode.Right,
+                _ => System.Windows.Controls.Primitives.PlacementMode.Left
+            }
+        };
+        ConfigureMenu(menu);
+        if (failed) menu.Items.Add(new MenuItem { Header = "Recherche des fenêtres indisponible", IsEnabled = false });
+        foreach (var window in windows)
+        {
+            var item = new MenuItem
+            {
+                Header = new TextBlock
+                {
+                    Text = string.IsNullOrWhiteSpace(window.Title) ? "Fenêtre sans titre" : window.Title,
+                    MaxWidth = 400, TextTrimming = TextTrimming.CharacterEllipsis
+                },
+                ToolTip = window.Title
+            };
+            item.Click += async (_, _) =>
+            {
+                menu.IsOpen = false;
+                await ActivateEntryWindowAsync(entry, window);
+            };
+            menu.Items.Add(item);
+        }
+        menu.Items.Add(new Separator());
+        var launch = new MenuItem { Header = "Lancer à nouveau" };
+        launch.Click += (_, _) => { menu.IsOpen = false; if (IsCurrentEntry(entry)) Launch(entry); };
+        menu.Items.Add(launch);
+        menu.IsOpen = true;
+    }
+
     private void OnDragOver(object sender, DragEventArgs e)
     {
         CloseLabels();
         externalDrag = e.Data.GetDataPresent(DataFormats.FileDrop);
+        UpdateDropHover(DropTargetUnderPointer(e), Environment.TickCount64);
         if (externalDrag && IsOverRecycleBin(e))
         {
             e.Effects = DragDropEffects.None;
@@ -484,7 +526,7 @@ public sealed class DockWindow : Window
             : e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
         outsideSince = 0;
-        if (e.Effects != DragDropEffects.None)
+        if (e.Effects != DragDropEffects.None && GroupUnderPointer(e) is null && !groupingHover.IsReady(Environment.TickCount64))
         {
             var (_, offset) = FindInsertion(e.GetPosition(items));
             items.ShowInsertion(offset);
@@ -510,6 +552,8 @@ public sealed class DockWindow : Window
 
     private void OnDrop(object sender, DragEventArgs e)
     {
+        var pairTarget = groupingHover.Target;
+        var pairReady = groupingHover.IsReady(Environment.TickCount64);
         externalDrag = false;
         items.ShowInsertion(null);
         e.Handled = true;
@@ -517,23 +561,24 @@ public sealed class DockWindow : Window
         interactionLocks++;
         try
         {
-            if (e.Data.GetData(DragFormat) is string id && Guid.TryParse(id, out var source))
+            var underPointer = DropTargetUnderPointer(e);
+            if (pairReady && pairTarget is { IsGroup: false } && underPointer?.Id == pairTarget.Id && activeDragEntry is { } dragged)
             {
-                var (before, _) = FindInsertion(e.GetPosition(items));
-                EntryRules.Move(settings.Entries, source, before);
-                PersistAndRender();
+                ClearDropFeedback();
+                CreateGroupFromDrop(dragged.Id, pairTarget.Id);
+                return;
             }
-            else if (e.Data.GetData(DataFormats.FileDrop) is string[] paths)
-            {
-                var (before, _) = FindInsertion(e.GetPosition(items));
-                AddPaths(paths, before);
-            }
+            ClearDropFeedback();
+            var (before, _) = FindInsertion(e.GetPosition(items));
+            var destination = GroupUnderPointer(e);
+            DropEntries(e.Data, destination?.Id, destination is null ? before : null);
         }
         finally { interactionLocks--; outsideSince = 0; }
     }
 
-    private void AddPaths(IEnumerable<string> paths, Guid? before = null)
+    private void AddPaths(IEnumerable<string> paths, Guid? before = null, Guid? groupId = null)
     {
+        if (!DestinationExists(groupId)) return;
         var rejected = new List<string>();
         foreach (var path in paths)
         {
@@ -543,7 +588,7 @@ public sealed class DockWindow : Window
             var index = before is null ? -1 : settings.Entries.FindIndex(e => e.Id == before);
             try
             {
-                var added = shortcuts.Import(new(Guid.NewGuid(), fullPath));
+                var added = shortcuts.Import(new(Guid.NewGuid(), fullPath, GroupId: groupId));
                 var entries = settings.Entries.ToList();
                 entries.Insert(index < 0 ? entries.Count : index, added);
                 shortcuts.Commit(settings, entries);
@@ -554,30 +599,32 @@ public sealed class DockWindow : Window
         if (rejected.Count > 0) ShowNotice("Seuls les raccourcis Windows (.lnk), exécutables (.exe) et dossiers sont acceptés.\n\nÉléments ignorés : " + string.Join(", ", rejected));
     }
 
-    private void PickApplication(Window? owner = null)
+    private void PickApplication(Window? owner = null, Guid? groupId = null)
     {
         interactionLocks++;
         try
         {
             var picker = new OpenFileDialog { Title = "Ajouter une application ou un raccourci", Filter = "Applications et raccourcis|*.exe;*.lnk", Multiselect = true, DereferenceLinks = false };
-            if (picker.ShowDialog(owner ?? this) == true) AddPaths(picker.FileNames);
+            if (picker.ShowDialog(owner ?? this) == true) AddPaths(picker.FileNames, groupId: groupId);
         }
         finally { interactionLocks--; }
     }
 
-    private void PickFolder(Window? owner = null)
+    private void PickFolder(Window? owner = null, Guid? groupId = null)
     {
         interactionLocks++;
         try
         {
             var picker = new OpenFolderDialog { Title = "Ajouter un dossier", Multiselect = true };
-            if (picker.ShowDialog(owner ?? this) == true) AddPaths(picker.FolderNames);
+            if (picker.ShowDialog(owner ?? this) == true) AddPaths(picker.FolderNames, groupId: groupId);
         }
         finally { interactionLocks--; }
     }
 
-    private void OpenCatalog()
+    private void OpenCatalog(Guid? groupId = null)
     {
+        if (!DestinationExists(groupId)) return;
+        CloseGroup();
         if (catalogWindow is not null) { catalogWindow.Activate(); return; }
         interactionLocks++;
         try
@@ -588,14 +635,21 @@ public sealed class DockWindow : Window
                 var keys = await StaWorker.RunAsync(_ => ApplicationCatalog.ExistingKeys(entries), lifetime.Token);
                 if (ApplicationCatalog.IsAdded(app, keys)) return;
                 var imported = await StaWorker.RunAsync(_ => shortcuts.ImportApplication(app), lifetime.Token);
-                shortcuts.Commit(settings, [..settings.Entries, imported]);
+                if (!DestinationExists(groupId)) { shortcuts.Discard(imported); return; }
+                shortcuts.Commit(settings, [..settings.Entries, imported with { GroupId = groupId }]);
                 lastRunningCheck = 0;
                 RenderItems();
-            }, PickApplication, PickFolder, () =>
+            }, owner => PickApplication(owner, groupId), owner => PickFolder(owner, groupId), () =>
             {
                 shortcuts.Commit(settings, [..settings.Entries, new DockEntry(Guid.NewGuid(), "", true)]);
                 RenderItems();
             }) { Owner = this };
+            if (groupId is not null)
+            {
+                catalogWindow.SeparatorButton.Visibility = Visibility.Collapsed;
+                catalogWindow.Title = "Ajouter au groupe — " + ManagedShortcuts.Name(settings.Entries.Single(e => e.Id == groupId));
+                catalogWindow.Heading.Text = catalogWindow.Title;
+            }
             catalogWindow.ShowDialog();
         }
         finally { catalogWindow = null; interactionLocks--; outsideSince = 0; }
@@ -611,6 +665,8 @@ public sealed class DockWindow : Window
 
     private void Launch(DockEntry entry)
     {
+        if (entry.IsGroup || entry.IsSeparator) return;
+        CloseGroup();
         try
         {
             if (shortcuts.IsMissing(entry)) { OfferRepair(entry); return; }
@@ -713,6 +769,7 @@ public sealed class DockWindow : Window
 
     private void OpenSettings()
     {
+        CloseGroup();
         if (settingsWindow is not null) { BringSettingsForward(settingsWindow); return; }
         var panel = new StackPanel { Margin = new Thickness(24) };
         panel.Children.Add(new TextBlock { Text = "Position du dock", FontSize = 22, Foreground = Brushes.White, Margin = new Thickness(0, 0, 0, 20) });
@@ -785,6 +842,25 @@ public sealed class DockWindow : Window
             opacityLabel.Text = $"Opacité du fond : {settings.BackgroundOpacity:P0}";
         };
         panel.Children.Add(new TextBlock { Text = "Sans masquage automatique, le dock reste visible sauf en plein écran.\n\nLa taille du dock s’adapte aux icônes.", TextWrapping = TextWrapping.Wrap, Foreground = Brushes.LightGray });
+        var restore = new Button
+        {
+            Content = "Restaurer le dock par défaut…", Padding = new Thickness(12, 10, 12, 10),
+            HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 20, 0, 8),
+            Background = new SolidColorBrush(Color.FromRgb(48, 55, 71)), IsEnabled = !restoringDefaults
+        };
+        restoreDefaultsButton = restore;
+        panel.Children.Add(restore);
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Remplace les raccourcis et groupes et réactive la corbeille. L’apparence et l’emplacement sont conservés.",
+            TextWrapping = TextWrapping.Wrap, Foreground = Brushes.LightGray
+        });
+        restore.Click += async (_, _) =>
+        {
+            restore.IsEnabled = false;
+            try { await RestoreDefaultsAsync(); }
+            finally { recycleToggle.IsChecked = settings.ShowRecycleBin; restore.IsEnabled = true; }
+        };
         var close = new Button { Content = "Terminer", Padding = new Thickness(16, 10, 16, 10), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 18, 0, 0), Background = new SolidColorBrush(Color.FromRgb(62, 77, 111)) };
         panel.Children.Add(close);
         var version = typeof(App).Assembly
@@ -802,7 +878,7 @@ public sealed class DockWindow : Window
             Width = 420, MaxHeight = Math.Max(200, (display?.Work.Height ?? SystemParameters.WorkArea.Height) / (display?.Scale ?? 1) - 24),
             SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterScreen, Background = new SolidColorBrush(Color.FromRgb(27, 30, 39)) };
         interactionLocks++;
-        settingsWindow.Closed += (_, _) => { settingsWindow = null; Persist(); interactionLocks--; outsideSince = 0; };
+        settingsWindow.Closed += (_, _) => { if (restoreDefaultsButton == restore) restoreDefaultsButton = null; settingsWindow = null; Persist(); interactionLocks--; outsideSince = 0; };
         close.Click += (_, _) => settingsWindow?.Close();
         edgePicker.SelectionChanged += (_, _) => { settings.Edge = edges[edgePicker.SelectedIndex].Item1; PersistAndRender(); SetRevealed(true); };
         monitorPicker.SelectionChanged += (_, _) =>

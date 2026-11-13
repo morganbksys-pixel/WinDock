@@ -12,9 +12,10 @@ internal sealed class ManagedShortcuts(SettingsStore store)
 
     internal DockEntry Import(DockEntry entry)
     {
-        if (entry.IsSeparator || !ShellShortcut.IsLink(entry.Path) || !File.Exists(entry.Path) || IsManaged(entry)) return entry;
+        if (entry.IsSeparator || entry.IsGroup || !ShellShortcut.IsLink(entry.Path) || !File.Exists(entry.Path) || IsManaged(entry)) return entry;
         var destination = NewPath(entry.Id);
-        File.Copy(entry.Path, destination);
+        try { File.Copy(entry.Path, destination); }
+        catch { if (File.Exists(destination)) File.Delete(destination); throw; }
         return entry with { Path = destination, DisplayName = Name(entry), SourcePath = entry.SourcePath ?? entry.Path };
     }
 
@@ -31,6 +32,14 @@ internal sealed class ManagedShortcuts(SettingsStore store)
         try { ShellShortcut.WriteShellApplication(destination, application.ApplicationId); }
         catch { if (File.Exists(destination)) File.Delete(destination); throw; }
         return new(id, destination, DisplayName: application.Name, SourcePath: "shell:AppsFolder\\" + application.ApplicationId, ApplicationId: application.ApplicationId);
+    }
+
+    internal DockEntry CreateApplication(string executable, string name)
+    {
+        var id = Guid.NewGuid(); var destination = NewPath(id);
+        try { ShellShortcut.Write(destination, null, new(executable, "", Path.GetDirectoryName(executable) ?? "", true)); }
+        catch { if (File.Exists(destination)) File.Delete(destination); throw; }
+        return new(id, destination, DisplayName: name, SourcePath: executable);
     }
 
     internal DockEntry PrepareEdit(DockEntry entry, string source, string name, ShortcutDetails details)
@@ -63,6 +72,7 @@ internal sealed class ManagedShortcuts(SettingsStore store)
 
     internal void Commit(DockSettings settings, List<DockEntry> entries)
     {
+        entries = EntryRules.NormalizeGroups(entries);
         var old = settings.Entries;
         settings.Entries = entries;
         try { store.Save(settings); }
@@ -75,12 +85,15 @@ internal sealed class ManagedShortcuts(SettingsStore store)
         foreach (var entry in old.Where(e => !entries.Any(n => n.Path == e.Path))) DeleteManaged(entry);
     }
 
+    internal void Discard(DockEntry staged) => DeleteManaged(staged);
+
     internal void Migrate(DockSettings settings)
     {
         var entries = new List<DockEntry>();
         try
         {
             foreach (var entry in settings.Entries) entries.Add(Import(entry));
+            entries = EntryRules.NormalizeGroups(entries);
             if (!entries.SequenceEqual(settings.Entries)) Commit(settings, entries);
         }
         catch
@@ -92,7 +105,7 @@ internal sealed class ManagedShortcuts(SettingsStore store)
 
     internal bool IsMissing(DockEntry entry)
     {
-        if (entry.IsSeparator) return false;
+        if (entry.IsSeparator || entry.IsGroup) return false;
         if (!File.Exists(entry.Path) && !Directory.Exists(entry.Path)) return true;
         if (entry.ApplicationId is { } appId && entry.SourcePath?.StartsWith("shell:AppsFolder\\", StringComparison.OrdinalIgnoreCase) == true)
             return ApplicationCatalog.IsKnownMissing(appId);
@@ -114,7 +127,7 @@ internal sealed class ManagedShortcuts(SettingsStore store)
 
     private void DeleteManaged(DockEntry entry)
     {
-        if (entry.IsSeparator || !IsManaged(entry)) return;
+        if (entry.IsSeparator || entry.IsGroup || !IsManaged(entry)) return;
         try { File.Delete(entry.Path); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* Keep an unused copy if Windows still holds it. */ }
     }

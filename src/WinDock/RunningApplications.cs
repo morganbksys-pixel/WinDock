@@ -25,7 +25,7 @@ internal sealed class RunningApplications
 
     internal HashSet<Guid> Snapshot(IReadOnlyList<DockEntry> entries, HashSet<string> running, HashSet<string> applicationIds)
     {
-        return entries.Where(entry => !entry.IsSeparator &&
+        return entries.Where(entry => !entry.IsSeparator && !entry.IsGroup &&
             ((entry.ApplicationId is { } id && applicationIds.Contains(id)) ||
              (entry.SourcePath?.StartsWith("shell:AppsFolder\\", StringComparison.OrdinalIgnoreCase) != true &&
               ResolveTarget(entry.Path) is { } target && running.Any(path => MatchesExecutable(target, path)))))

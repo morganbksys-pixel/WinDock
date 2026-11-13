@@ -6,56 +6,98 @@ using WinDock.Core;
 
 namespace WinDock;
 
-internal sealed record ApplicationWindow(nint Handle, int ProcessId, string? Path, string? ApplicationId);
+internal sealed record ApplicationWindow(nint Handle, int ProcessId, string? Path, string? ApplicationId, string Title = "");
+
+internal enum WindowActivationResult { Activated, Unavailable, Refused }
 
 internal interface IApplicationWindows
 {
+    Task<IReadOnlyList<ApplicationWindow>> ListAsync(DockEntry entry, CancellationToken token);
+    Task<WindowActivationResult> ActivateAsync(DockEntry entry, ApplicationWindow window, CancellationToken token);
     Task<int> CountAsync(DockEntry entry, CancellationToken token);
     Task<int> CloseAsync(DockEntry entry, CancellationToken token);
 }
 
-/// <summary>Requests normal window closure; never terminates a process.</summary>
+/// <summary>Lists, activates and requests normal closure of matching windows; never terminates a process.</summary>
 internal sealed class ApplicationWindows : IApplicationWindows
 {
     private readonly Func<IReadOnlyList<ApplicationWindow>> enumerate;
     private readonly Func<nint, ApplicationWindow?> inspect;
     private readonly Func<nint, int> postClose;
+    private readonly Func<nint, bool> activate;
 
     internal ApplicationWindows() : this(Enumerate, Inspect, PostClose) { }
 
     internal ApplicationWindows(Func<IReadOnlyList<ApplicationWindow>> enumerate,
-        Func<nint, ApplicationWindow?> inspect, Func<nint, int> postClose)
+        Func<nint, ApplicationWindow?> inspect, Func<nint, int> postClose, Func<nint, bool>? activate = null)
     {
         this.enumerate = enumerate;
         this.inspect = inspect;
         this.postClose = postClose;
+        this.activate = activate ?? Activate;
     }
 
-    public Task<int> CountAsync(DockEntry entry, CancellationToken token) => RunAsync(entry, false, token);
-    public Task<int> CloseAsync(DockEntry entry, CancellationToken token) => RunAsync(entry, true, token);
-
-    private Task<int> RunAsync(DockEntry entry, bool close, CancellationToken token) => StaWorker.RunAsync(_ =>
+    private static Func<ApplicationWindow, bool> Matcher(DockEntry entry)
     {
-        if (entry.IsSeparator) return 0;
-        // Each operation owns its resolver and COM apartment, so no cache is shared across workers.
         var target = new RunningApplications().ResolveTarget(entry.Path);
-        bool Matches(ApplicationWindow window) =>
+        return window => !entry.IsSeparator && !entry.IsGroup && (
             entry.ApplicationId is { } id && string.Equals(id, window.ApplicationId, StringComparison.OrdinalIgnoreCase) ||
             entry.SourcePath?.StartsWith("shell:AppsFolder\\", StringComparison.OrdinalIgnoreCase) != true &&
-            target is not null && RunningApplications.MatchesExecutable(target, window.Path);
-        var windows = enumerate().Where(Matches).DistinctBy(window => window.Handle).ToArray();
-        if (!close) return windows.Length;
+            target is not null && RunningApplications.MatchesExecutable(target, window.Path));
+    }
+
+    public Task<IReadOnlyList<ApplicationWindow>> ListAsync(DockEntry entry, CancellationToken token) =>
+        StaWorker.RunAsync<IReadOnlyList<ApplicationWindow>>(_ =>
+        {
+            if (entry.IsSeparator || entry.IsGroup) return [];
+            var matches = Matcher(entry);
+            token.ThrowIfCancellationRequested();
+            return enumerate().Where(matches).DistinctBy(window => window.Handle).ToArray();
+        }, token);
+
+    public async Task<int> CountAsync(DockEntry entry, CancellationToken token) =>
+        (await ListAsync(entry, token).ConfigureAwait(false)).Count;
+
+    public Task<WindowActivationResult> ActivateAsync(DockEntry entry, ApplicationWindow window, CancellationToken token) =>
+        StaWorker.RunAsync(_ =>
+        {
+            var matches = Matcher(entry);
+            var current = inspect(window.Handle);
+            if (current is null || current.ProcessId != window.ProcessId || !matches(current) ||
+                !string.Equals(current.Path, window.Path, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(current.ApplicationId, window.ApplicationId, StringComparison.OrdinalIgnoreCase))
+                return WindowActivationResult.Unavailable;
+            token.ThrowIfCancellationRequested();
+            return activate(window.Handle) ? WindowActivationResult.Activated : WindowActivationResult.Refused;
+        }, token);
+
+    public Task<int> CloseAsync(DockEntry entry, CancellationToken token) => StaWorker.RunAsync(_ =>
+    {
+        if (entry.IsSeparator || entry.IsGroup) return 0;
+        var matches = Matcher(entry);
+        var windows = enumerate().Where(matches).DistinctBy(window => window.Handle).ToArray();
         var failures = 0;
         foreach (var window in windows)
         {
             token.ThrowIfCancellationRequested();
             var current = inspect(window.Handle);
-            if (current is null || current.ProcessId != window.ProcessId || !Matches(current)) continue;
+            if (current is null || current.ProcessId != window.ProcessId || !matches(current)) continue;
             var error = postClose(window.Handle);
-            if (error != 0 && error != 1400) failures++; // ERROR_INVALID_WINDOW_HANDLE: already closed.
+            if (error != 0 && error != 1400) failures++;
         }
         return failures;
     }, token);
+
+    private static bool Activate(nint window)
+    {
+        if (IsIconic(window)) ShowWindowAsync(window, 9); // SW_RESTORE
+        return SetForegroundWindow(window);
+    }
+
+    [DllImport("user32.dll")] private static extern bool IsIconic(nint window);
+    [DllImport("user32.dll")] private static extern bool ShowWindowAsync(nint window, int command);
+    [DllImport("user32.dll")] private static extern bool SetForegroundWindow(nint window);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(nint window, StringBuilder title, int size);
 
     private delegate bool WindowCallback(nint window, nint data);
     [DllImport("user32.dll")] private static extern bool EnumWindows(WindowCallback callback, nint data);
@@ -107,6 +149,8 @@ internal sealed class ApplicationWindows : IApplicationWindows
             if (identities.Length != 1) return null;
             identity = identities[0];
         }
-        return new(window, processId, identity.Path, identity.ApplicationId);
+        var title = new StringBuilder(1024);
+        GetWindowText(window, title, title.Capacity);
+        return new(window, processId, identity.Path, identity.ApplicationId, title.ToString());
     }
 }

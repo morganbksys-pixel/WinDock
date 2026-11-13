@@ -24,35 +24,64 @@ internal sealed class ContextMenuDismissal : IDisposable
     [DllImport("user32.dll")] private static extern bool UnhookWindowsHookEx(nint hook);
     [DllImport("user32.dll")] private static extern nint CallNextHookEx(nint hook, int code, nint message, nint data);
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] private static extern nint GetModuleHandle(string? name);
-    private readonly ContextMenu menu;
+    private readonly Func<bool> isOpen;
+    private readonly Func<Point, bool> contains;
+    private readonly Func<nint, bool> owns;
+    private readonly Action close;
     private readonly MouseCallback callback;
     private readonly nint owner;
     private nint hook;
     private nint foreground;
 
     internal ContextMenuDismissal(ContextMenu menu, nint owner)
+        : this(() => menu.IsOpen, point => ContainsMenu(menu, point), handle => OwnsMenu(menu, handle), () => menu.IsOpen = false, owner) { }
+
+    internal ContextMenuDismissal(Window panel, nint owner, Func<Point, bool> extraContains, Func<nint, bool> extraOwns, Action close)
+        : this(() => panel.IsVisible, point => ContainsElement(panel, point) || extraContains(point),
+            handle => new WindowInteropHelper(panel).Handle == handle || extraOwns(handle), close, owner) { }
+
+    private ContextMenuDismissal(Func<bool> isOpen, Func<Point, bool> contains, Func<nint, bool> owns, Action close, nint owner)
     {
-        this.menu = menu;
+        this.isOpen = isOpen; this.contains = contains; this.owns = owns; this.close = close;
         this.owner = owner;
         foreground = Native.GetForegroundWindow();
         callback = OnMouse;
-        hook = SetWindowsHookEx(14, callback, GetModuleHandle(null), 0); // WH_MOUSE_LL, only while open.
+        hook = SetWindowsHookEx(14, callback, GetModuleHandle(null), 0);
         if (hook == 0) throw new Win32Exception(Marshal.GetLastWin32Error());
     }
 
-    internal void Poll()
+    internal static bool ContainsElement(FrameworkElement element, Point screenPoint)
     {
-        var current = Native.GetForegroundWindow();
-        var popup = (PresentationSource.FromVisual(menu) as HwndSource)?.Handle ?? 0;
-        if ((current != foreground && current != 0 && current != owner && current != popup) ||
-            (Native.GetAsyncKeyState(0x1B) & 0x8000) != 0)
-            menu.IsOpen = false;
+        if (!element.IsVisible || PresentationSource.FromVisual(element) is null) return false;
+        return new Rect(element.RenderSize).Contains(element.PointFromScreen(screenPoint));
+    }
+
+    private static IEnumerable<FrameworkElement> MenuSurfaces(ItemsControl items)
+    {
+        yield return items;
+        foreach (var item in items.Items.OfType<MenuItem>().Where(i => i.IsSubmenuOpen))
+            foreach (var child in MenuSurfaces(item)) yield return child;
+        // Child items are hosted in a separate HWND when their parent's submenu is open.
+        if (items is MenuItem)
+            foreach (var child in items.Items.OfType<FrameworkElement>()) yield return child;
+    }
+
+    internal static bool ContainsMenu(ContextMenu menu, Point point) => menu.IsOpen && MenuSurfaces(menu).Any(e => ContainsElement(e, point));
+    internal static bool OwnsMenu(ContextMenu menu, nint handle) => menu.IsOpen && MenuSurfaces(menu).Any(e => (PresentationSource.FromVisual(e) as HwndSource)?.Handle == handle);
+
+    internal void Poll() => Poll(Native.GetForegroundWindow(), (Native.GetAsyncKeyState(0x1B) & 0x8000) != 0);
+
+    internal void Poll(nint current, bool escape)
+    {
+        if ((current != foreground && current != 0 && current != owner && !owns(current)) ||
+            escape)
+            close();
         foreground = current;
     }
 
     private nint OnMouse(int code, nint message, nint data)
     {
-        if (code >= 0 && menu.IsOpen && message is 0x0201 or 0x0204 or 0x0207 or 0x020B)
+        if (code >= 0 && isOpen() && message is 0x0201 or 0x0204 or 0x0207 or 0x020B)
         {
             var point = Marshal.PtrToStructure<MouseData>(data);
             HandlePointerDown(new Point(point.X, point.Y));
@@ -62,10 +91,8 @@ internal sealed class ContextMenuDismissal : IDisposable
 
     internal void HandlePointerDown(Point screenPoint)
     {
-        if (!menu.IsOpen || PresentationSource.FromVisual(menu) is null) return;
-        var local = menu.PointFromScreen(screenPoint);
-        if (!new Rect(menu.RenderSize).Contains(local))
-            menu.Dispatcher.BeginInvoke(() => menu.IsOpen = false, DispatcherPriority.Input);
+        if (isOpen() && !contains(screenPoint))
+            System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(() => { if (isOpen()) close(); }, DispatcherPriority.Input);
     }
 
     public void Dispose()

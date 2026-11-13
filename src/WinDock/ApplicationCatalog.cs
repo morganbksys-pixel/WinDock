@@ -38,7 +38,7 @@ internal static class ApplicationCatalog
 
     internal static Task<CatalogResult> LoadAsync(CancellationToken token) => StaWorker.RunAsync(Load, token);
 
-    private static CatalogResult Load(CancellationToken token)
+    internal static CatalogResult Load(CancellationToken token)
     {
         var applications = new List<CatalogApplication>();
         var byLaunch = new Dictionary<string, CatalogApplication>(StringComparer.Ordinal);
@@ -121,7 +121,7 @@ internal static class ApplicationCatalog
     internal static HashSet<string> ExistingKeys(IEnumerable<DockEntry> entries)
     {
         var keys = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var entry in entries.Where(e => !e.IsSeparator))
+        foreach (var entry in entries.Where(e => !e.IsSeparator && !e.IsGroup))
         {
             if (entry.ApplicationId is { Length: > 0 } id) keys.Add("app:" + id.ToUpperInvariant());
             var details = ShellShortcut.Read(entry.Path);

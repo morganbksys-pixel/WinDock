@@ -1,4 +1,4 @@
-WINDOCK — 0.0.1 — WINDOWS X64
+WINDOCK — 0.0.6 — WINDOWS X64
 
 Deux formats portables, avec le runtime .NET inclus :
 - EXE autonome : placez WinDock.exe dans un dossier permanent.
@@ -8,6 +8,10 @@ Deux formats portables, avec le runtime .NET inclus :
   Gardez tous les fichiers extraits ensemble.
 
 1. Lancez WinDock.exe depuis ce dossier.
+   Au premier lancement uniquement : Explorateur, navigateur par défaut,
+   messagerie, dossier personnel, Téléchargements, Documents et corbeille.
+   Les cibles indisponibles ou dupliquées sont omises. Les dossiers déplacés
+   conservent leurs emplacements Windows. Un dock existant, même vide, reste inchangé.
 2. Déposez des raccourcis .lnk, des applications .exe ou des dossiers.
 3. Clic droit > Ajouter… ouvre le catalogue des applications classiques et Microsoft Store.
    Recherchez, cochez les applications puis cliquez sur Ajouter la sélection.
@@ -25,6 +29,10 @@ Deux formats portables, avec le runtime .NET inclus :
    Les séparateurs se déplacent par glisser-déposer, comme les icônes.
 9. Réglages > Opacité du fond pour ajuster la transparence (10 à 100 %).
 10. Un point vert indique un processus reconnu par son exécutable ou son identité Windows.
+    Un clic retrouve la fenêtre ouverte, ou propose un choix par titre si plusieurs
+    fenêtres sont reconnues. Sans fenêtre, il lance le raccourci. « Lancer à nouveau »
+    au clic droit ou dans le menu lance le raccourci avec ses paramètres habituels.
+    Si Windows refuse l’activation, aucune autre instance n’est lancée.
     Les installations Squirrel à dossiers de version, comme Claude Desktop, sont reconnues.
     Clic droit > Fermer l’application / Fermer toutes les fenêtres demande une fermeture
     normale, y compris des fenêtres minimisées. L’application peut demander un enregistrement
@@ -53,6 +61,44 @@ Deux formats portables, avec le runtime .NET inclus :
 17. Les libellés apparaissent sous les icônes, ou au-dessus si nécessaire.
     Les réglages s’ouvrent au premier plan et défilent sur les petits écrans.
     Le numéro de version apparaît en bas de cette fenêtre.
+
+18. Pour créer un groupe, glissez une icône au centre d’une autre icône du dock.
+    Le halo indique « Maintenir pour grouper ». Après 500 ms, le message devient
+    « Relâcher pour créer un groupe » et un aperçu des deux icônes apparaît.
+    Relâchez : « Nouveau groupe » est créé et s’ouvre, sans dialogue de confirmation.
+    Un dépôt plus rapide ou sur les marges réordonne les icônes. Échap annule.
+    Un groupe contient au moins deux raccourcis, applications ou dossiers.
+    Si un retrait ou un transfert le réduit à un seul membre, ce dernier revient
+    à la place du groupe dans le dock. Les groupes vides sont supprimés.
+    Les anciens petits groupes de 0.0.3 sont normalisés au démarrage.
+19. Double-cliquez sur le titre du groupe pour le renommer sur place.
+    Entrée enregistre ; Échap annule. Un nom vide conserve le nom précédent.
+    Le bouton + ajoute des applications ou dossiers à ce groupe.
+    Le panneau reprend le fond, la transparence et les arrondis du dock ;
+    ses icônes et textes restent opaques.
+    Sur un groupe existant, le halo affiche « Ajouter à… ». Un survol de 500 ms
+    ouvre sa grille ; un dépôt direct sur la tuile ajoute à la fin.
+    Pas de sous-groupes ni de séparateurs internes.
+
+20. Réglages > Restaurer le dock par défaut… ouvre immédiatement la confirmation.
+    « Préparation de la sélection… » s’affiche pendant la résolution ciblée Windows,
+    sans recharger le catalogue complet. Annuler reste disponible ; Restaurer
+    s’active lorsque la liste exacte des entrées est prête. Une erreur propose Réessayer.
+    Annuler ou fermer la fenêtre abandonne la préparation sans modifier le dock.
+    Restaurer remplace vos raccourcis et groupes et réactive la corbeille.
+    Écran, bord, opacité, masquage et démarrage automatique sont conservés.
+    Le navigateur utilise l’association HTTPS ; la messagerie utilise mailto.
+    Le clic ouvre l’application de messagerie normalement, sans destinataire ni rédaction.
+    Sans client identifiable, l’entrée est omise. Les doublons avec le navigateur sont ignorés.
+    Les applications épinglées ne changent pas automatiquement entre deux restaurations.
+    Une mise à jour ne retire pas vos anciens raccourcis Paramètres personnalisés.
+    Si l’enregistrement échoue, l’ancien contenu et ses copies sont conservés.
+
+Avant la première sauvegarde avec des groupes, une copie datée
+settings.json.before-groups-* est conservée dans %LocalAppData%\WinDock.
+Pour revenir à une version antérieure à 0.0.3 : quittez WinDock, conservez
+une copie du settings.json actuel puis restaurez cette sauvegarde sous le
+nom settings.json. Les anciennes versions ne comprennent pas les groupes.
 
 Aucune installation ou élévation administrateur nécessaire.
 Exécutable non signé.

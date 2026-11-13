@@ -2,7 +2,7 @@
 
 [← Retour à l’accueil](../README.md) · [Développement](DEVELOPPEMENT.md)
 
-Le guide détaillé de WinDock 0.0.1 pour Windows 10/11 x64 : ajout d’applications, organisation, réglages et mises à jour.
+Le guide détaillé de WinDock 0.0.6 pour Windows 10/11 x64 : ajout d’applications, organisation, réglages et mises à jour.
 
 - [Essayer](#essayer)
 - [Mettre à jour](#mettre-à-jour)
@@ -15,13 +15,27 @@ Le guide détaillé de WinDock 0.0.1 pour Windows 10/11 x64 : ajout d’applicat
 Deux formats portables sont disponibles pour Windows x64, sans installation de .NET ni droits administrateur :
 
 - **EXE autonome** : placez `WinDock.exe` dans un dossier permanent puis lancez-le. Conservez ce nom pour le démarrage automatique. Le runtime .NET est inclus ; ses bibliothèques natives sont extraites au premier lancement.
-- **ZIP portable** (`WinDock-0.0.1-win-x64.zip`) : décompressez l’archive dans un dossier permanent puis lancez `WinDock.exe`. Conservez tous les fichiers extraits ensemble : ils comprennent le runtime .NET.
+- **ZIP portable** (`WinDock-0.0.6-win-x64.zip`) : décompressez l’archive dans un dossier permanent puis lancez `WinDock.exe`. Conservez tous les fichiers extraits ensemble : ils comprennent le runtime .NET.
 
 Le numéro de version est affiché en bas de **Réglages**. Pour produire les deux formats depuis les sources, consultez le [guide de développement](DEVELOPPEMENT.md#produire-une-livraison).
 
 ## Mettre à jour
 
 Quittez WinDock via son menu contextuel. Pour l’EXE autonome, remplacez `WinDock.exe` par la nouvelle version. Pour le ZIP portable, remplacez l’ensemble des fichiers du dossier par ceux de la nouvelle archive. Les réglages et raccourcis sont conservés séparément dans `%LocalAppData%\WinDock` : ne supprimez pas ce dossier lors de la mise à jour. Relancez `WinDock.exe` et vérifiez la version dans **Réglages**. Si vous changez l’emplacement du dossier portable, désactivez puis réactivez le démarrage automatique depuis le nouvel emplacement.
+
+## Dock de départ et restauration
+
+Uniquement lorsque `settings.json` est absent, WinDock prépare cette sélection :
+
+**Explorateur · Navigateur par défaut · Messagerie │ Dossier personnel · Téléchargements · Documents │ Corbeille**
+
+Le navigateur et la messagerie affichent leurs vrais noms et leurs icônes. Ils sont résolus à partir des associations Windows **HTTPS** et **mailto**, sans reconstruire le catalogue complet ni charger toutes ses icônes. Le clic ouvre l’application normalement : aucune URL, aucun destinataire et aucune rédaction de message ne sont imposés. Sans messagerie identifiable, cette entrée est omise. Un gestionnaire mail renvoyant au même navigateur n’ajoute pas de doublon. Les dossiers utilisent leurs emplacements Windows réels, y compris les redirections vers OneDrive ou un autre disque. Les cibles indisponibles et les doublons sont omis ; aucun dossier utilisateur n’est créé.
+
+La sélection est enregistrée immédiatement. Un dock existant, y compris vidé volontairement, n’est pas rempli à nouveau au redémarrage. La récupération d’un fichier de configuration corrompu ne déclenche pas non plus cette initialisation. Masquage automatique et apparence conservent leurs valeurs habituelles.
+
+**Réglages → Restaurer le dock par défaut…** ouvre immédiatement la confirmation avec **Préparation de la sélection…** et un indicateur d’activité. **Annuler** reste disponible pendant les réponses de Windows ou d’un dossier distant. La liste exacte remplace le chargement lorsqu’elle est prête, puis **Restaurer** devient disponible. En cas d’erreur, **Réessayer** relance la préparation dans cette fenêtre. La confirmation précise que vos raccourcis et groupes seront remplacés ; leurs fichiers d’origine sont conservés. **Annuler** nettoie les copies préparées sans modifier le dock, y compris si un résultat arrive après la fermeture. **Restaurer** enregistre le nouveau contenu et réactive la corbeille en une seule sauvegarde, avant de retirer les anciennes copies gérées inutilisées.
+
+L’écran, le bord, l’opacité, le masquage automatique et le démarrage automatique sont conservés. Une erreur de préparation ou d’enregistrement garde l’ancien contenu et l’ancien état de la corbeille. Le navigateur et la messagerie sont résolus à nouveau lors de chaque restauration ; il n’existe pas de suivi automatique de vos changements d’association entre-temps. Les configurations existantes sont conservées lors d’une mise à jour : un ancien raccourci Paramètres n’est pas retiré automatiquement. Fermer les réglages pendant la préparation annule la restauration.
 
 ## Utilisation
 
@@ -32,7 +46,7 @@ Le dock apparaît initialement en bas de l’écran principal. Après masquage, 
 - Le dernier catalogue et ses icônes sont conservés entre les démarrages. La fenêtre affiche ce cache puis actualise les applications en arrière-plan, en conservant recherche et sélection. Vous pouvez continuer à ajouter des applications pendant l’actualisation. Fermer la fenêtre laisse cette actualisation terminer.
 - Le catalogue regroupe les applications classiques et Microsoft Store connues de Windows (`AppsFolder`), complétées par les raccourcis du menu Démarrer. Il ne recense pas tous les exécutables du disque. Les boutons **Ajout manuel…**, **Ajouter un dossier…** et **Ajouter un séparateur** restent accessibles.
 - **Ajouter un séparateur**, depuis le catalogue ou le clic droit, crée une ligne entre les groupes. Depuis une icône, elle est ajoutée juste après celle-ci. Faites glisser les séparateurs pour les déplacer ; le clic droit permet de les retirer.
-- Cliquez sur une icône pour lancer sa cible ; faites-la glisser pour changer son ordre. Les raccourcis `.lnk` sont copiés dans les données de WinDock avec leurs propriétés : vous pouvez supprimer le raccourci du bureau après l’ajout.
+- Cliquez sur une icône pour lancer sa cible si aucune fenêtre n’est reconnue. Si une fenêtre est déjà ouverte, WinDock la restaure si elle est minimisée et demande son passage au premier plan. Si plusieurs fenêtres sont reconnues, un menu près de l’icône permet de choisir par titre (« Fenêtre sans titre » si nécessaire). **Lancer à nouveau**, dans ce menu ou au clic droit, lance le raccourci avec ses arguments et son dossier de travail habituels ; l’application décide si elle ouvre une nouvelle instance. Faites glisser l’icône pour changer son ordre. Les raccourcis `.lnk` sont copiés dans les données de WinDock avec leurs propriétés : vous pouvez supprimer le raccourci du bureau après l’ajout.
 - **Clic droit → Modifier / réparer…** permet de changer le nom, la cible, les arguments et le dossier de travail. Les paramètres sont préremplis ; les arguments saisis remplacent les anciens. Un remplacement par un autre `.lnk` reprend ses paramètres. Annuler ne change rien, et enregistrer conserve la position dans le dock.
 - Un point orange indique une cible introuvable. Un clic propose **Choisir une nouvelle cible**. Les raccourcis spéciaux non éditables sont conservés tels quels ; choisissez un exécutable ou un autre raccourci pour modifier leurs paramètres.
 - Un petit point vert en bas à droite indique qu’un processus correspondant à l’exécutable ou à l’identité Windows de l’application est lancé, même en arrière-plan. L’état est actualisé environ toutes les 1,5 secondes. Les dossiers et séparateurs n’ont pas d’indicateur. Certains lanceurs intermédiaires ou processus dont Windows interdit la lecture peuvent ne pas être reconnus. Explorer seul ne déclenche jamais le point vert d’une application Store.
@@ -50,6 +64,24 @@ Le dock apparaît initialement en bas de l’écran principal. Après masquage, 
 
 Le dock n’apparaît pas devant une fenêtre au premier plan couvrant tout l’écran. Son apparition ne prend pas le focus clavier. Les réglages et sélecteurs de fichiers sont des fenêtres interactives normales.
 
+## Groupes dépliables
+
+Glissez un raccourci au **centre d’un autre raccourci du dock**. Le halo et « Maintenir pour grouper » indiquent la cible. Après **500 ms**, le contour se renforce, un aperçu des deux icônes apparaît et le message devient **Relâcher pour créer un groupe**. Au lâcher, WinDock crée et ouvre **Nouveau groupe**, avec la cible puis le raccourci déplacé. Aucun dialogue n’est nécessaire. Un dépôt plus rapide ou dans les marges conserve le réordonnancement ; Échap annule sans changement.
+
+La source peut être un membre d’un autre groupe, mais la cible doit être directement dans le dock. Séparateurs, corbeille, groupes déplacés, dépôt sur soi-même et dépôts depuis l’Explorateur ne créent pas de groupe.
+
+- Un groupe contient **au moins deux raccourcis**, applications ou dossiers, même si une cible est manquante. Après un retrait ou un transfert, un groupe à un seul membre est automatiquement dissous et ce membre reprend sa position dans le dock. Un groupe vide disparaît. Création, transfert et dissolutions sont enregistrés ensemble ; une sauvegarde échouée conserve l’état précédent.
+- Les anciens groupes de 0.0.3 contenant zéro ou un membre sont normalisés au démarrage sans considérer la configuration comme corrompue.
+- Un clic ouvre une grille de quatre colonnes maximum avec noms et défilement. Le panneau reprend le fond, l’opacité et les arrondis du dock ; les textes et icônes restent opaques. Un second clic, Échap hors édition, un clic extérieur, un changement d’application ou le plein écran le referment.
+- **Double-cliquez sur le titre** pour le renommer sur place. Entrée enregistre le nom sans espaces aux extrémités ; Échap annule. Quitter le champ enregistre un nom valide, sinon restaure l’ancien. **Renommer…** au clic droit ouvre la même édition. Le panneau prend le focus clavier uniquement pour cette action explicite.
+- Le bouton **+** (« Ajouter au groupe » au survol) ouvre le catalogue pour ce groupe ; ajout manuel et dossiers gardent cette destination. Les dépôts depuis l’Explorateur et la détection globale des doublons restent disponibles.
+- Pour ajouter à un groupe existant, son halo affiche **Ajouter à « Nom »**. Après 500 ms de survol, sa grille s’ouvre. Déposez au repère bleu, ou directement sur la tuile pour ajouter en fin de groupe. Ses bords haut et bas permettent de défiler pendant le déplacement.
+- **Déplacer vers…** propose les groupes existants et le dock. **Dissoudre le groupe** remet tous ses membres à sa place, dans leur ordre actuel. Les raccourcis conservent activation des fenêtres, relancement, réparation et commandes de fermeture. Les fichiers d’origine restent conservés.
+
+Les groupes ne contiennent ni sous-groupes ni séparateurs et ne lancent pas toutes leurs applications simultanément. Glisser un groupe hors du dock annule son déplacement.
+
+Avant la première sauvegarde introduisant des groupes, WinDock conserve une copie datée **settings.json.before-groups-*** dans `%LocalAppData%\WinDock`. Si la copie échoue, la création n’est pas enregistrée. Les anciennes configurations se chargent directement dans 0.0.4. Pour revenir à une version antérieure à 0.0.3, quittez WinDock, conservez une copie du `settings.json` actuel et restaurez la sauvegarde précédant les groupes sous le nom `settings.json`. Les raccourcis modifiés ou retirés depuis cette sauvegarde peuvent nécessiter une réparation.
+
 ## Démarrage automatique
 
 Dans **Réglages**, cochez **Lancer WinDock au démarrage de Windows** pour lancer le dock à l’ouverture de votre session. Cette option est désactivée par défaut et prend effet immédiatement. Elle crée un raccourci `WinDock.lnk` dans le dossier Démarrage de votre compte, sans droits administrateur. Décochez-la avant de supprimer la version portable. Après un déplacement du dossier, désactivez puis réactivez l’option depuis le nouvel emplacement. Si Windows a désactivé cette entrée dans ses applications de démarrage, réactivez-la également dans les paramètres Windows.
@@ -58,7 +90,7 @@ Dans **Réglages**, cochez **Lancer WinDock au démarrage de Windows** pour lanc
 
 La détection des applications ouvertes reconnaît aussi les lanceurs Squirrel (par exemple Claude Desktop) dont le processus utilise un sous-dossier `app-<version>` de la même installation. Un exécutable homonyme situé ailleurs, comme Claude en ligne de commande, reste distinct.
 
-Un clic droit sur une application ouverte propose **Fermer l’application**, ou **Fermer toutes les fenêtres** si plusieurs fenêtres sont reconnues, y compris minimisées. L’application peut demander un enregistrement, annuler ou ignorer la fermeture ; aucun processus n’est forcé à quitter. Sans fenêtre identifiable, cette commande est absente. Plusieurs raccourcis vers le même exécutable partagent cette action, quels que soient leurs arguments. Le point vert reste présent tant que le processus est actif.
+Un clic droit sur une application ouverte propose **Fermer l’application**, ou **Fermer toutes les fenêtres** si plusieurs fenêtres sont reconnues, y compris minimisées. L’application peut demander un enregistrement, annuler ou ignorer la fermeture ; aucun processus n’est forcé à quitter. Sans fenêtre identifiable, cette commande est absente. Plusieurs raccourcis vers le même exécutable partagent les fenêtres reconnues pour l’activation et la fermeture, quels que soient leurs arguments. Si Windows refuse une activation ou si la fenêtre a disparu, WinDock affiche un message sans lancer une autre instance. Si la recherche échoue, un menu propose explicitement **Lancer à nouveau**. Le point vert reste présent tant que le processus est actif.
 
 Les données sont enregistrées dans `%LocalAppData%\WinDock\settings.json`, indépendamment du dossier portable. Les copies de raccourcis sont dans le sous-dossier `Shortcuts`. Les anciennes entrées `.lnk` encore accessibles sont copiées au démarrage ; celles déjà supprimées restent réparables. Une configuration invalide est copiée dans un fichier `settings.json.invalid-*` avant le retour aux valeurs par défaut. La modification ou la suppression d’une entrée conserve l’ancienne version si la sauvegarde échoue. Les raccourcis d’origine ne sont jamais modifiés par WinDock.
 

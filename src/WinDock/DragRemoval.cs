@@ -19,7 +19,7 @@ internal static class DragRemoval
     internal static bool ShouldRemove(bool armed, bool escape, DragDropKeyStates keys) =>
         armed && !escape && (keys & (DragDropKeyStates.LeftMouseButton | DragDropKeyStates.RightMouseButton | DragDropKeyStates.MiddleMouseButton)) == 0;
 
-    internal static bool Run(FrameworkElement source, Window dock, DataObject data)
+    internal static bool Run(FrameworkElement source, Window dock, DataObject data, Func<IReadOnlyList<Window>>? surfaces = null, bool allowRemoval = true)
     {
         var remove = false;
         var displays = Native.Displays();
@@ -46,8 +46,12 @@ internal static class DragRemoval
         {
             if (!Native.GetCursorPos(out var cursor)) { hint.Hide(); return false; }
             var scale = VisualTreeHelper.GetDpi(dock).DpiScaleX;
-            var origin = dock.PointToScreen(new Point());
-            var armed = IsArmed(new Rect(origin.X, origin.Y, dock.ActualWidth * scale, dock.ActualHeight * scale), new Point(cursor.X, cursor.Y), scale);
+            var armed = allowRemoval && (surfaces?.Invoke() ?? [dock]).Where(w => w.IsVisible).All(w =>
+            {
+                var dpi = VisualTreeHelper.GetDpi(w).DpiScaleX;
+                var start = w.PointToScreen(new Point());
+                return IsArmed(new Rect(start.X, start.Y, w.ActualWidth * dpi, w.ActualHeight * dpi), new Point(cursor.X, cursor.Y), dpi);
+            });
             if (!armed) { hint.Hide(); return false; }
             var screen = displays.FirstOrDefault(d => d.Bounds.Contains(cursor.X, cursor.Y)) ?? displays.FirstOrDefault();
             var hintScale = screen?.Scale ?? scale;

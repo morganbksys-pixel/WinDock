@@ -72,6 +72,18 @@ internal static class ShellShortcut
         finally { Marshal.ReleaseComObject(link); }
     }
 
+    internal static void SetIcon(string shortcut, string iconPath, int index = 0)
+    {
+        object link = new ShellLinkObject();
+        try
+        {
+            ((IPersistFile)link).Load(shortcut, 0);
+            ((IShellLink)link).SetIconLocation(iconPath, index);
+            ((IPersistFile)link).Save(shortcut, true);
+        }
+        finally { Marshal.ReleaseComObject(link); }
+    }
+
     internal static bool IsLink(string path) => Path.GetExtension(path).Equals(".lnk", StringComparison.OrdinalIgnoreCase);
 
     internal static void WriteShellApplication(string destination, string applicationId)

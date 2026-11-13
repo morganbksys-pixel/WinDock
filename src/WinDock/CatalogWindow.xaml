@@ -7,7 +7,7 @@
       <RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
     <StackPanel>
-      <TextBlock Text="Ajouter au dock" FontSize="24"/>
+      <TextBlock x:Name="Heading" Text="Ajouter au dock" FontSize="24"/>
       <TextBlock Text="Retrouvez vos applications et choisissez celles à garder à portée de main." Foreground="#BFC4D2" Margin="0,6,0,18" TextWrapping="Wrap"/>
     </StackPanel>
     <DockPanel Grid.Row="1" Margin="0,0,0,12">
