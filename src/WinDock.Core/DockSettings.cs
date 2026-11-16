@@ -78,7 +78,7 @@ public sealed class SettingsStore(string path)
         {
             status = SettingsLoadStatus.Recovered;
             // Preserve the original before allowing a subsequent save to replace it.
-            try { File.Copy(path, path + ".invalid-" + DateTime.UtcNow.ToString("yyyyMMddHHmmssfff"), false); }
+            try { File.Copy(path, path + ".invalid-" + DateTime.UtcNow.ToString("yyyyMMddHHmmssfff") + "-" + Guid.NewGuid().ToString("N"), false); }
             catch (Exception backupError) when (backupError is IOException or UnauthorizedAccessException)
             {
                 throw new IOException("Impossible de sauvegarder la configuration illisible. Le fichier original est conservé.", backupError);

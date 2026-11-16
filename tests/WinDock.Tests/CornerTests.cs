@@ -51,6 +51,7 @@ internal static partial class Program
                 var restored = store.Load(out warning, out var status);
                 Check(warning is not null && status == SettingsLoadStatus.Recovered && restored.PlacementMode == DockPlacementMode.Edge);
             }
+            Check(Directory.GetFiles(temporary, "corner-settings.json.invalid-*").Length == 3);
         });
         Run("Corner docks use physical triggers and available work areas at every corner, axis and DPI", () =>
         {
