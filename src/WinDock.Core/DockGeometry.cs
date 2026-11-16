@@ -11,6 +11,79 @@ public readonly record struct DockPlacement(PixelRect Window, PixelRect Trigger)
 
 public static class DockGeometry
 {
+    /// <summary>Tests the activation area independently of the indicator's appearance and retention passage.</summary>
+    /// <param name="placement">Physical dock and edge trigger bounds.</param>
+    /// <param name="indicator">Physical indicator bounds.</param>
+    /// <param name="layout">Resolved anchor and orientation.</param>
+    /// <param name="requireExactCorner">Whether to require the extreme two physical pixels of the corner.</param>
+    /// <param name="x">Physical cursor X coordinate.</param>
+    /// <param name="y">Physical cursor Y coordinate.</param>
+    /// <returns>Whether the cursor should begin or continue the reveal delay.</returns>
+    public static bool ContainsActivation(DockPlacement placement, PixelRect indicator, DockLayout layout, bool requireExactCorner, double x, double y)
+    {
+        if (layout.Mode == DockPlacementMode.Edge)
+            return indicator.Contains(x, y) || placement.Trigger.Contains(x, y);
+        if (!requireExactCorner) return indicator.Contains(x, y);
+        var width = Math.Min(2, indicator.Width);
+        var height = Math.Min(2, indicator.Height);
+        var exactCorner = new PixelRect(layout.Right ? indicator.Right - width : indicator.X,
+            layout.Bottom ? indicator.Bottom - height : indicator.Y, width, height);
+        return exactCorner.Contains(x, y);
+    }
+
+    /// <summary>Places the indicator on a work-area edge or at the physical monitor corner.</summary>
+    /// <param name="bounds">Physical monitor bounds.</param>
+    /// <param name="work">Available monitor work area.</param>
+    /// <param name="layout">Resolved anchor and orientation.</param>
+    /// <param name="scale">Monitor DPI scale.</param>
+    /// <returns>Physical indicator and corner activation bounds.</returns>
+    public static PixelRect IndicatorArea(PixelRect bounds, PixelRect work, DockLayout layout, double scale)
+    {
+        if (layout.Mode == DockPlacementMode.Edge) return IndicatorArea(work, layout.Edge, scale);
+        var width = Math.Min(bounds.Width, 36 * scale);
+        var height = Math.Min(bounds.Height, 36 * scale);
+        return new(layout.Right ? bounds.Right - width : bounds.X, layout.Bottom ? bounds.Bottom - height : bounds.Y, width, height);
+    }
+
+    /// <summary>Anchors a dock inside its work area while corner activation uses the physical monitor bounds.</summary>
+    /// <param name="bounds">Physical monitor bounds.</param>
+    /// <param name="work">Available monitor work area.</param>
+    /// <param name="layout">Resolved anchor and orientation.</param>
+    /// <param name="desiredWidth">Desired width in device-independent units.</param>
+    /// <param name="desiredHeight">Desired height in device-independent units.</param>
+    /// <param name="scale">Monitor DPI scale.</param>
+    /// <returns>Physical dock and activation bounds.</returns>
+    public static DockPlacement Calculate(PixelRect bounds, PixelRect work, DockLayout layout, double desiredWidth, double desiredHeight, double scale)
+    {
+        if (layout.Mode == DockPlacementMode.Edge) return Calculate(work, layout.Edge, desiredWidth, desiredHeight, scale);
+        var marginX = Math.Min(8 * scale, Math.Max(0, (work.Width - 1) / 2));
+        var marginY = Math.Min(8 * scale, Math.Max(0, (work.Height - 1) / 2));
+        var width = Math.Min(desiredWidth * scale, work.Width - marginX * 2);
+        var height = Math.Min(desiredHeight * scale, work.Height - marginY * 2);
+        var x = layout.Right ? work.Right - marginX - width : work.X + marginX;
+        var y = layout.Bottom ? work.Bottom - marginY - height : work.Y + marginY;
+        return new(new(x, y, width, height), IndicatorArea(bounds, work, layout, scale));
+    }
+
+    /// <summary>Tests the dock and a compact passage from the corner, without retaining the whole adjacent edge.</summary>
+    /// <param name="placement">Dock and activation bounds.</param>
+    /// <param name="layout">Resolved anchor and orientation.</param>
+    /// <param name="scale">Monitor DPI scale.</param>
+    /// <param name="x">Physical cursor X coordinate.</param>
+    /// <param name="y">Physical cursor Y coordinate.</param>
+    /// <returns>Whether the cursor should keep the dock open.</returns>
+    public static bool ContainsInteraction(DockPlacement placement, DockLayout layout, double scale, double x, double y)
+    {
+        if (layout.Mode == DockPlacementMode.Edge) return InteractionArea(placement).Contains(x, y);
+        if (placement.Window.Contains(x, y)) return true;
+        var window = placement.Window;
+        var width = layout.Horizontal ? Math.Min(window.Width, 68 * scale) : window.Width;
+        var height = layout.Horizontal ? window.Height : Math.Min(window.Height, 68 * scale);
+        var firstTile = new PixelRect(layout.Right ? window.Right - width : window.X,
+            layout.Bottom ? window.Bottom - height : window.Y, width, height);
+        return InteractionArea(new(firstTile, placement.Trigger)).Contains(x, y);
+    }
+
     public static PixelRect IndicatorArea(PixelRect work, DockEdge edge, double scale)
     {
         var horizontal = edge is DockEdge.Top or DockEdge.Bottom;

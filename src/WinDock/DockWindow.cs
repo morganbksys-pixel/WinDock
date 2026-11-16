@@ -5,7 +5,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Ellipse = System.Windows.Shapes.Ellipse;
 using Microsoft.Win32;
@@ -33,6 +32,7 @@ public sealed partial class DockWindow : Window
     private Window? settingsWindow;
     private IndicatorWindow? indicator;
     private PixelRect indicatorArea;
+    private DockLayout? placedLayout;
     private readonly SolidColorBrush dockBackground = new(Color.FromRgb(27, 30, 39));
     private ContextMenu? activeMenu;
     private ContextMenuDismissal? menuDismissal;
@@ -116,7 +116,7 @@ public sealed partial class DockWindow : Window
         RenderItems();
     }
 
-    private bool Horizontal => settings.Edge is DockEdge.Bottom or DockEdge.Top;
+    private bool Horizontal => settings.Layout.Horizontal;
     private nint WindowMessage(nint window, int message, nint wParam, nint lParam, ref bool handled)
     {
         if (message == 0x21) { handled = true; return 3; } // MA_NOACTIVATE, preserving mouse clicks.
@@ -132,7 +132,9 @@ public sealed partial class DockWindow : Window
         var displays = Native.Displays();
         display = displays.FirstOrDefault(d => d.Device == settings.MonitorDevice)
             ?? displays.FirstOrDefault(d => d.Primary) ?? displays.FirstOrDefault();
-        if (groupPanel is not null && (display is null || display.Device != previousDisplay?.Device || display.Work != previousDisplay.Work || display.Scale != previousDisplay.Scale || settings.Edge != groupEdge)) CloseGroup();
+        if (placedLayout != settings.Layout || display != previousDisplay) triggerSince = outsideSince = 0;
+        placedLayout = settings.Layout;
+        if (groupPanel is not null && (display is null || display.Device != previousDisplay?.Device || display.Work != previousDisplay.Work || display.Bounds != previousDisplay.Bounds || display.Scale != previousDisplay.Scale || settings.Layout != groupLayout)) CloseGroup();
         if (display is null) return;
         // Measure the actual content rather than duplicating its dimensions.
         items.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
@@ -145,9 +147,9 @@ public sealed partial class DockWindow : Window
             availableHeight / Math.Max(1, contentSize.Height)));
         var width = contentSize.Width * fit + frame;
         var height = contentSize.Height * fit + frame;
-        placement = DockGeometry.Calculate(display.Work, settings.Edge, width, height, display.Scale);
-        indicatorArea = DockGeometry.IndicatorArea(display.Work, settings.Edge, display.Scale);
-        indicator?.Place(indicatorArea, settings.Edge, display.Scale);
+        placement = DockGeometry.Calculate(display.Bounds, display.Work, settings.Layout, width, height, display.Scale);
+        indicatorArea = DockGeometry.IndicatorArea(display.Bounds, display.Work, settings.Layout, display.Scale);
+        indicator?.Place(indicatorArea, settings.Layout, display.Scale);
         // WPF sizes use DIPs; native positioning uses physical pixels on the selected monitor.
         Width = placement.Window.Width / display.Scale;
         Height = placement.Window.Height / display.Scale;
@@ -181,13 +183,15 @@ public sealed partial class DockWindow : Window
         if (display is null || !Native.GetCursorPos(out var pointer)) return;
         var fullScreen = Native.FullScreen(display, hwnd);
         var overIndicator = indicatorArea.Contains(pointer.X, pointer.Y);
+        var overTrigger = DockGeometry.ContainsActivation(placement, indicatorArea, settings.Layout,
+            settings.RequireExactCorner, pointer.X, pointer.Y);
         var proximity = 40 * display.Scale;
         var nearIndicator = new PixelRect(indicatorArea.X - proximity, indicatorArea.Y - proximity,
             indicatorArea.Width + proximity * 2, indicatorArea.Height + proximity * 2).Contains(pointer.X, pointer.Y);
-        indicator?.SetAppearance(settings.AutoHide && !revealed && !fullScreen, nearIndicator, overIndicator);
+        indicator?.SetAppearance(settings.AutoHide && !revealed && !fullScreen, nearIndicator, overTrigger);
         if (externalDrag && (Native.GetAsyncKeyState(1) & 0x8000) == 0 && (Native.GetAsyncKeyState(2) & 0x8000) == 0) externalDrag = false;
-        UpdateVisibility(fullScreen, overIndicator || placement.Trigger.Contains(pointer.X, pointer.Y),
-            overIndicator || DockGeometry.InteractionArea(placement).Contains(pointer.X, pointer.Y), now);
+        UpdateVisibility(fullScreen, overTrigger,
+            overIndicator || DockGeometry.ContainsInteraction(placement, settings.Layout, display.Scale, pointer.X, pointer.Y), now);
     }
 
     internal void UpdateVisibility(bool fullScreen, bool overTrigger, bool overDock, long now)
@@ -206,7 +210,7 @@ public sealed partial class DockWindow : Window
             if (overTrigger)
             {
                 if (triggerSince == 0) triggerSince = now;
-                if (now - triggerSince >= 150) SetRevealed(true);
+                if (now - triggerSince >= (settings.PlacementMode == DockPlacementMode.Corner ? 300 : 150)) SetRevealed(true);
             }
             else triggerSince = 0;
         }
@@ -225,11 +229,13 @@ public sealed partial class DockWindow : Window
         if (!value) CloseLabels();
         IsHitTestVisible = value;
         triggerSince = outsideSince = 0;
-        BeginAnimation(OpacityProperty, new DoubleAnimation(value ? 1 : 0, TimeSpan.FromMilliseconds(150)));
+        DockMotion.SetOpacity(this, value ? 1 : 0);
     }
 
     private void RenderItems()
     {
+        ContextMenu.Placement = settings.PlacementMode == DockPlacementMode.Corner ? InwardMenuPlacement
+            : System.Windows.Controls.Primitives.PlacementMode.MousePoint;
         CloseLabels();
         recycleButton = null;
         runningIndicators.Clear();
@@ -253,6 +259,12 @@ public sealed partial class DockWindow : Window
             recycleButton.Click += async (_, _) => await RunRecycleActionAsync(false);
             items.Children.Add(recycleButton);
             UpdateRecycleButton();
+        }
+        if (settings.Layout.Reversed)
+        {
+            var reversed = items.Children.Cast<UIElement>().Reverse().ToArray();
+            items.Children.Clear();
+            foreach (var child in reversed) items.Children.Add(child);
         }
         if (hwnd != 0) RefreshPlacement();
         RefreshGroupPanel();
@@ -401,6 +413,7 @@ public sealed partial class DockWindow : Window
 
     private void ConfigureMenu(ContextMenu menu)
     {
+        if (settings.PlacementMode == DockPlacementMode.Corner) menu.Placement = InwardMenuPlacement;
         ContextMenuDismissal? dismissal = null;
         menu.Opened += (_, _) =>
         {
@@ -423,6 +436,14 @@ public sealed partial class DockWindow : Window
             interactionLocks--; outsideSince = 0;
         };
     }
+
+    private System.Windows.Controls.Primitives.PlacementMode InwardMenuPlacement => settings.Layout.EffectiveEdge switch
+    {
+        DockEdge.Bottom => System.Windows.Controls.Primitives.PlacementMode.Top,
+        DockEdge.Top => System.Windows.Controls.Primitives.PlacementMode.Bottom,
+        DockEdge.Left => System.Windows.Controls.Primitives.PlacementMode.Right,
+        _ => System.Windows.Controls.Primitives.PlacementMode.Left
+    };
 
     private bool IsCurrentEntry(DockEntry entry) => !closed && settings.Entries.Contains(entry);
 
@@ -475,7 +496,7 @@ public sealed partial class DockWindow : Window
         var menu = new ContextMenu
         {
             StaysOpen = false, PlacementTarget = button,
-            Placement = settings.Edge switch
+            Placement = settings.Layout.EffectiveEdge switch
             {
                 DockEdge.Bottom => System.Windows.Controls.Primitives.PlacementMode.Top,
                 DockEdge.Top => System.Windows.Controls.Primitives.PlacementMode.Bottom,
@@ -534,17 +555,26 @@ public sealed partial class DockWindow : Window
         else items.ShowInsertion(null);
     }
 
-    private (Guid? Before, double Offset) FindInsertion(Point point)
+    internal (Guid? Before, double Offset) FindInsertion(Point point)
     {
+        var reversed = settings.Layout.Reversed;
+        var extent = Horizontal ? items.ActualWidth : items.ActualHeight;
+        var coordinate = Horizontal ? point.X : point.Y;
+        if (reversed) coordinate = extent - coordinate;
         double offset = 0;
-        foreach (var button in items.Children.OfType<Button>().Where(b => b.Tag is DockEntry))
+        var buttons = items.Children.OfType<Button>().Where(b => b.Tag is DockEntry);
+        if (reversed) buttons = buttons.Reverse();
+        foreach (var button in buttons)
         {
+            var origin = button.TranslatePoint(new Point(), items);
             var length = Horizontal ? button.ActualWidth : button.ActualHeight;
-            if ((Horizontal ? point.X : point.Y) < offset + length / 2)
-                return (((DockEntry)button.Tag).Id, offset);
-            offset += length;
+            var start = Horizontal ? origin.X : origin.Y;
+            if (reversed) start = extent - start - length;
+            if (coordinate < start + length / 2)
+                return (((DockEntry)button.Tag).Id, reversed ? extent - start : start);
+            offset = start + length;
         }
-        return (null, offset);
+        return (null, reversed ? extent - offset : offset);
     }
 
     private bool IsOverRecycleBin(DragEventArgs e) => recycleButton is not null &&
@@ -771,26 +801,34 @@ public sealed partial class DockWindow : Window
     {
         CloseGroup();
         if (settingsWindow is not null) { BringSettingsForward(settingsWindow); return; }
-        var panel = new StackPanel { Margin = new Thickness(24) };
-        panel.Children.Add(new TextBlock { Text = "Position du dock", FontSize = 22, Foreground = Brushes.White, Margin = new Thickness(0, 0, 0, 20) });
-        panel.Children.Add(new TextBlock { Text = "Bord de l’écran", Foreground = Brushes.LightGray });
-        var edges = new[] { (DockEdge.Bottom, "Bas"), (DockEdge.Top, "Haut"), (DockEdge.Left, "Gauche"), (DockEdge.Right, "Droite") };
-        var edgePicker = new ComboBox { ItemsSource = edges.Select(e => e.Item2), SelectedIndex = Array.FindIndex(edges, e => e.Item1 == settings.Edge), Margin = new Thickness(0, 8, 0, 20) };
-        panel.Children.Add(edgePicker);
+        var view = new DockSettingsView();
+        var panel = view.PositionPanel;
+        var positionPicker = new DockPositionPicker(settings, () =>
+        {
+            CloseGroup();
+            triggerSince = outsideSince = 0;
+            PersistAndRender();
+            SetRevealed(display is null || !Native.FullScreen(display, hwnd));
+        });
+        panel.Children.Add(positionPicker);
         panel.Children.Add(new TextBlock { Text = "Écran", Foreground = Brushes.LightGray });
         var displays = Native.Displays();
         var monitorPicker = new ComboBox { ItemsSource = displays.Select(d => d.Label), SelectedIndex = Math.Max(0, displays.FindIndex(d => d.Device == display?.Device)), Margin = new Thickness(0, 8, 0, 20) };
         panel.Children.Add(monitorPicker);
+        panel = view.AppearancePanel;
+        panel.Children.Add(new TextBlock { Text = "Visibilité et contenu", Foreground = Brushes.White, FontSize = 18, Margin = new Thickness(0, 0, 0, 18) });
         var autoHideToggle = new CheckBox { Content = "Masquage automatique", IsChecked = settings.AutoHide, Foreground = Brushes.White, Margin = new Thickness(0, 0, 0, 16) };
         autoHideToggle.SetResourceReference(StyleProperty, "SettingsSwitch");
         autoHideToggle.Click += (_, _) =>
         {
             settings.AutoHide = autoHideToggle.IsChecked == true;
+            positionPicker.Refresh();
             Persist();
             outsideSince = triggerSince = 0;
             if (!settings.AutoHide) { indicator?.SetAppearance(false, false, false); SetRevealed(display is null || !Native.FullScreen(display, hwnd)); }
         };
         panel.Children.Add(autoHideToggle);
+        panel.Children.Add(new TextBlock { Text = "Sans masquage automatique, le dock reste visible sauf en plein écran.", TextWrapping = TextWrapping.Wrap, Foreground = Brushes.LightGray, Margin = new Thickness(0, 0, 0, 24) });
         var recycleToggle = new CheckBox { Content = "Afficher la corbeille", IsChecked = settings.ShowRecycleBin, Foreground = Brushes.White, Margin = new Thickness(0, 0, 0, 20) };
         recycleToggle.SetResourceReference(StyleProperty, "SettingsSwitch");
         recycleToggle.Click += async (_, _) =>
@@ -801,6 +839,7 @@ public sealed partial class DockWindow : Window
             await RefreshRecycleAsync();
         };
         panel.Children.Add(recycleToggle);
+        panel.Children.Add(new TextBlock { Text = "Fond du dock", Foreground = Brushes.White, FontSize = 18, Margin = new Thickness(0, 12, 0, 18) });
         var opacityLabel = new TextBlock { Foreground = Brushes.LightGray, Text = $"Opacité du fond : {settings.BackgroundOpacity:P0}" };
         panel.Children.Add(opacityLabel);
         var opacitySlider = new Slider
@@ -810,6 +849,9 @@ public sealed partial class DockWindow : Window
             Margin = new Thickness(0, 8, 0, 20), ToolTip = "Transparence du fond uniquement"
         };
         panel.Children.Add(opacitySlider);
+        panel.Children.Add(new TextBlock { Text = "Les icônes restent opaques. La taille du dock s’adapte à son contenu.", TextWrapping = TextWrapping.Wrap, Foreground = Brushes.LightGray });
+        panel = view.GeneralPanel;
+        panel.Children.Add(new TextBlock { Text = "Démarrage", Foreground = Brushes.White, FontSize = 18, Margin = new Thickness(0, 0, 0, 18) });
         var startup = StartupRegistration.Current();
         var startupToggle = new CheckBox
         {
@@ -841,7 +883,7 @@ public sealed partial class DockWindow : Window
             dockBackground.Opacity = settings.BackgroundOpacity;
             opacityLabel.Text = $"Opacité du fond : {settings.BackgroundOpacity:P0}";
         };
-        panel.Children.Add(new TextBlock { Text = "Sans masquage automatique, le dock reste visible sauf en plein écran.\n\nLa taille du dock s’adapte aux icônes.", TextWrapping = TextWrapping.Wrap, Foreground = Brushes.LightGray });
+        panel.Children.Add(new TextBlock { Text = "Raccourcis et groupes", Foreground = Brushes.White, FontSize = 18, Margin = new Thickness(0, 12, 0, 0) });
         var restore = new Button
         {
             Content = "Restaurer le dock par défaut…", Padding = new Thickness(12, 10, 12, 10),
@@ -861,26 +903,22 @@ public sealed partial class DockWindow : Window
             try { await RestoreDefaultsAsync(); }
             finally { recycleToggle.IsChecked = settings.ShowRecycleBin; restore.IsEnabled = true; }
         };
-        var close = new Button { Content = "Terminer", Padding = new Thickness(16, 10, 16, 10), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 18, 0, 0), Background = new SolidColorBrush(Color.FromRgb(62, 77, 111)) };
-        panel.Children.Add(close);
+        var close = view.CloseButton;
         var version = typeof(App).Assembly
             .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
             .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
             .FirstOrDefault()?.InformationalVersion.Split('+')[0]
             ?? typeof(App).Assembly.GetName().Version?.ToString() ?? "inconnue";
-        panel.Children.Add(new TextBlock
-        {
-            Text = $"WinDock — Version {version}", Foreground = Brushes.LightGray,
-            FontSize = 12, Margin = new Thickness(0, 16, 0, 0), TextAlignment = TextAlignment.Center
-        });
+        view.VersionLabel.Text = $"WinDock — Version {version}";
+        var maxWidth = Math.Max(320, (display?.Work.Width ?? SystemParameters.WorkArea.Width) / (display?.Scale ?? 1) - 24);
+        var maxHeight = Math.Max(260, (display?.Work.Height ?? SystemParameters.WorkArea.Height) / (display?.Scale ?? 1) - 24);
         settingsWindow = new Window { Title = "Réglages — WinDock", Icon = Icon,
-            Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled },
-            Width = 420, MaxHeight = Math.Max(200, (display?.Work.Height ?? SystemParameters.WorkArea.Height) / (display?.Scale ?? 1) - 24),
-            SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterScreen, Background = new SolidColorBrush(Color.FromRgb(27, 30, 39)) };
+            Content = view, Width = Math.Min(640, maxWidth), Height = Math.Min(640, maxHeight),
+            MinWidth = Math.Min(520, maxWidth), MaxWidth = maxWidth, MinHeight = 260, MaxHeight = maxHeight,
+            ResizeMode = ResizeMode.CanResize, WindowStartupLocation = WindowStartupLocation.CenterScreen, Background = new SolidColorBrush(Color.FromRgb(27, 30, 39)) };
         interactionLocks++;
         settingsWindow.Closed += (_, _) => { if (restoreDefaultsButton == restore) restoreDefaultsButton = null; settingsWindow = null; Persist(); interactionLocks--; outsideSince = 0; };
         close.Click += (_, _) => settingsWindow?.Close();
-        edgePicker.SelectionChanged += (_, _) => { settings.Edge = edges[edgePicker.SelectedIndex].Item1; PersistAndRender(); SetRevealed(true); };
         monitorPicker.SelectionChanged += (_, _) =>
         {
             if (monitorPicker.SelectedIndex < 0) return;

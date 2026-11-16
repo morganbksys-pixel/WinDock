@@ -13,7 +13,7 @@ public sealed partial class DockWindow
 {
     private GroupPanel? groupPanel;
     private ContextMenuDismissal? groupDismissal;
-    private DockEdge groupEdge;
+    private DockLayout groupLayout;
     private DockEntry? activeDragEntry;
     private readonly GroupingHover groupingHover = new();
     private GroupingFeedback? dropFeedback;
@@ -201,7 +201,7 @@ public sealed partial class DockWindow
             var id = groupPanel?.GroupId;
             return id is not null && CommitEntries(settings.Entries.Select(e => e.Id == id ? e with { DisplayName = name } : e).ToList());
         }, dockBackground) { Owner = this };
-        groupPanel = panel; groupEdge = settings.Edge; interactionLocks++;
+        groupPanel = panel; groupLayout = settings.Layout; interactionLocks++;
         panel.PreviewDragOver += GroupDragOver;
         panel.PreviewDrop += GroupDrop;
         panel.DragLeave += (_, _) => panel.Items.ShowInsertion(null);
@@ -251,7 +251,7 @@ public sealed partial class DockWindow
         panel.UpdateLayout();
         var start = button.PointToScreen(new Point());
         var end = button.PointToScreen(new Point(button.ActualWidth, button.ActualHeight));
-        var bounds = GroupGeometry.Place(display.Work, new PixelRect(start.X, start.Y, end.X - start.X, end.Y - start.Y), settings.Edge, panel.ActualWidth * display.Scale, panel.ActualHeight * display.Scale, display.Scale);
+        var bounds = GroupGeometry.Place(display.Work, new PixelRect(start.X, start.Y, end.X - start.X, end.Y - start.Y), settings.Layout.EffectiveEdge, panel.ActualWidth * display.Scale, panel.ActualHeight * display.Scale, display.Scale);
         Native.Position(new WindowInteropHelper(panel).Handle, bounds);
     }
 

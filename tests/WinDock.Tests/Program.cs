@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 using WinDock;
 using WinDock.Core;
 
-internal static class Program
+internal static partial class Program
 {
     private static int passed;
     [DllImport("user32.dll")] private static extern nint GetWindow(nint window, uint command);
@@ -24,6 +24,21 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--isolated-desktop")
+        {
+            try { return IsolatedDesktop.Run(args[1]); }
+            catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
+        }
+        if (args.Length == 3 && args[0] == "--isolated-worker")
+        {
+            using var log = new StreamWriter(Path.Combine(args[2], "isolated-tests.log")) { AutoFlush = true };
+            Console.SetOut(log); Console.SetError(log);
+            var isolatedTemporary = Path.Combine(Path.GetTempPath(), "WinDock.Isolated-" + Guid.NewGuid());
+            Directory.CreateDirectory(isolatedTemporary);
+            try { IsolatedDesktop.VerifyWorker(args[1]); RunIsolatedWindowTests(isolatedTemporary, args[1], args[2]); return 0; }
+            catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
+            finally { Directory.Delete(isolatedTemporary, true); }
+        }
         if (args.Length == 2 && args[0] == "--running-smoke")
         {
             var entry = new DockEntry(Guid.NewGuid(), args[1]);
@@ -47,6 +62,18 @@ internal static class Program
         Directory.CreateDirectory(temporary);
         try
         {
+            if (args.Length > 0 && args[0] == "--background")
+            {
+                var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+                SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+                app.Resources = new ResourceDictionary { Source = new Uri("/WinDock;component/Styles.xaml", UriKind.Relative) };
+                RunCornerCoreTests(temporary);
+                RunCornerWindowTests(temporary, args);
+                RunMenuBackgroundTests();
+                RunCornerOffscreenTests(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
+                Console.WriteLine($"{passed} background test groups passed; no windows shown or activated. Interactive tests not run.");
+                return 0;
+            }
             Run("Versioned Squirrel applications share indicator and window identity without matching unrelated executables", () =>
             {
                 var root = Path.Combine(temporary, "AnthropicClaude");
@@ -582,6 +609,7 @@ internal static class Program
                 var p = DockGeometry.Calculate(new(0, 0, 1280, 720), DockEdge.Top, 10000, 78, 2);
                 Check(p.Window.Width == 1248 && p.Window.X == 16 && p.Window.Height == 156);
             });
+            RunCornerCoreTests(temporary);
             Run("WPF window and native handle initialize on every edge", () =>
             {
                 var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
@@ -625,6 +653,8 @@ internal static class Program
                     Check(!indicator.IsVisible);
                 }
             });
+            RunCornerWindowTests(temporary, args);
+            RunMenuBackgroundTests();
             Run("Settings restoration previews the exact selection and supports cancellation and confirmation", () =>
             {
                 var root = Path.Combine(temporary, "defaults-ui"); var sources = CreateDefaultSources(root);
@@ -638,9 +668,10 @@ internal static class Program
                 {
                     window.ContextMenu.Items.OfType<MenuItem>().Single(i => Equals(i.Header, "Réglages…")).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                     var dialog = Application.Current.Windows.Cast<Window>().Single(w => w.Title == "Réglages — WinDock");
-                    var panel = (StackPanel)((ScrollViewer)dialog.Content).Content;
-                    var restore = panel.Children.OfType<Button>().Single(b => Equals(b.Content, "Restaurer le dock par défaut…"));
-                    var recycle = panel.Children.OfType<CheckBox>().Single(c => Equals(c.Content, "Afficher la corbeille"));
+                    var view = (DockSettingsView)dialog.Content;
+                    view.SelectPage("Général");
+                    var restore = view.SettingsControls.OfType<Button>().Single(b => Equals(b.Content, "Restaurer le dock par défaut…"));
+                    var recycle = view.SettingsControls.OfType<CheckBox>().Single(c => Equals(c.Content, "Afficher la corbeille"));
                     foreach (var accept in new[] { false, true })
                     {
                         var seen = false;
@@ -714,8 +745,8 @@ internal static class Program
                     Console.WriteLine("Instrumented confirmation first render: " + openingMilliseconds + " ms; discovery still blocked.");
                     window.ContextMenu.Items.OfType<MenuItem>().Single(i => Equals(i.Header, "Réglages…")).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                     var reopened = Application.Current.Windows.Cast<Window>().Single(w => w.Title == "Réglages — WinDock");
-                    var reopenedPanel = (StackPanel)((ScrollViewer)reopened.Content).Content;
-                    Check(reopenedPanel.Children.OfType<Button>().Single(b => Equals(b.Content, "Restaurer le dock par défaut…")).IsEnabled);
+                    var reopenedView = (DockSettingsView)reopened.Content;
+                    Check(reopenedView.SettingsControls.OfType<Button>().Single(b => Equals(b.Content, "Restaurer le dock par défaut…")).IsEnabled);
                     var preparation = new DefaultDockService(store, new FakeDefaultDockEnvironment(sources)).PrepareAsync(default);
                     PumpUntil(() => preparation.IsCompleted);
                     var prepared = preparation.GetAwaiter().GetResult();
@@ -1126,14 +1157,15 @@ internal static class Program
                     dialog.WindowState = WindowState.Minimized;
                     item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                     Check(dialog.WindowState == WindowState.Normal && !dialog.Topmost && dialog.IsActive);
-                    var panel = (StackPanel)((ScrollViewer)dialog.Content).Content;
+                    var view = (DockSettingsView)dialog.Content;
+                    view.SelectPage("Apparence");
                     dialog.MaxHeight = 260;
                     dialog.UpdateLayout();
-                    Check(((ScrollViewer)dialog.Content).ScrollableHeight > 0 && dialog.ActualHeight <= 260);
-                    var autoHide = panel.Children.OfType<CheckBox>().Single(c => Equals(c.Content, "Masquage automatique"));
+                    Check(((ScrollViewer)((TabItem)view.Tabs.SelectedItem).Content).ScrollableHeight > 0 && dialog.ActualHeight <= 260 && view.CloseButton.IsVisible);
+                    var autoHide = view.SettingsControls.OfType<CheckBox>().Single(c => Equals(c.Content, "Masquage automatique"));
                     autoHide.IsChecked = false;
                     autoHide.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));
-                    var recycle = panel.Children.OfType<CheckBox>().Single(c => Equals(c.Content, "Afficher la corbeille"));
+                    var recycle = view.SettingsControls.OfType<CheckBox>().Single(c => Equals(c.Content, "Afficher la corbeille"));
                     recycle.IsChecked = true;
                     recycle.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));
                     Check(!store.Load(out _).AutoHide && store.Load(out _).ShowRecycleBin);
@@ -1146,11 +1178,12 @@ internal static class Program
                 }
                 finally { window.Close(); }
             });
-            Run("Dock labels use opaque rounded styling and stay within the screen on all edges", () =>
+            Run("Dock labels use opaque rounded styling and stay within the screen on edges and corners", () =>
             {
-                foreach (var edge in Enum.GetValues<DockEdge>())
+                foreach (var layout in AllLayouts())
                 {
-                    var settings = new DockSettings { AutoHide = false, Edge = edge, Entries = [new(Guid.NewGuid(), temporary, DisplayName: "Une application avec un nom très long pour vérifier le retour à la ligne du libellé")] };
+                    var edge = layout.EffectiveEdge;
+                    var settings = new DockSettings { AutoHide = false, PlacementMode = layout.Mode, Edge = layout.Edge, Corner = layout.Corner, Orientation = layout.Orientation, Entries = [new(Guid.NewGuid(), temporary, DisplayName: "Une application avec un nom très long pour vérifier le retour à la ligne du libellé")] };
                     var window = new DockWindow(settings, new SettingsStore(Path.Combine(temporary, "labels.json")));
                     try
                     {
@@ -1188,11 +1221,11 @@ internal static class Program
                     finally { window.Close(); }
                 }
             });
-            Run("Dock menus stay above the dock across periodic placement updates", () =>
+            Run("Dock menus stay above the dock across periodic placement updates on edges and corners", () =>
             {
-                foreach (var edge in Enum.GetValues<DockEdge>())
+                foreach (var layout in AllLayouts())
                 {
-                    var settings = new DockSettings { Edge = edge, Entries = [new(Guid.NewGuid(), temporary)] };
+                    var settings = new DockSettings { PlacementMode = layout.Mode, Edge = layout.Edge, Corner = layout.Corner, Orientation = layout.Orientation, Entries = [new(Guid.NewGuid(), temporary)] };
                     var window = new DockWindow(settings, new SettingsStore(Path.Combine(temporary, "menu-order.json")));
                     try
                     {
@@ -1206,12 +1239,15 @@ internal static class Program
                         PumpUntil(() => PresentationSource.FromVisual(menu) is HwndSource);
                         var popup = ((HwndSource)PresentationSource.FromVisual(menu)).Handle;
                         var dock = new WindowInteropHelper(window).Handle;
-                        var watch = Stopwatch.StartNew();
-                        PumpUntil(() =>
+                        // Exercise the periodic placement operation synchronously. Dismissal input is
+                        // covered separately; waiting on the real desktop conflates closure and Z-order.
+                        var refresh = typeof(DockWindow).GetMethod("RefreshPlacement", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+                        for (var cycle = 0; cycle < 3; cycle++)
                         {
-                            Check(menu.IsOpen && IsAbove(popup, dock));
-                            return watch.ElapsedMilliseconds >= 2300;
-                        });
+                            refresh.Invoke(window, null);
+                            if (!menu.IsOpen) throw new InvalidOperationException("Le menu s’est fermé pendant le test interactif ; vérifier les entrées et changements de fenêtre sur le bureau.");
+                            if (!IsAbove(popup, dock)) throw new InvalidOperationException("Le menu ouvert est passé derrière le dock après un repositionnement.");
+                        }
                         menu.IsOpen = false;
                     }
                     finally { window.Close(); }
@@ -1805,12 +1841,12 @@ internal static class Program
                             try
                             {
                                 settingsWindow.UpdateLayout();
-                                var settingsPanel = (StackPanel)((ScrollViewer)settingsWindow.Content).Content;
+                                var settingsView = (DockSettingsView)settingsWindow.Content;
                                 Check(settingsWindow.Icon is BitmapSource settingsIcon && settingsIcon.PixelWidth == 256 && settingsIcon.PixelHeight == 256);
                                 var version = typeof(App).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
                                     .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().Single().InformationalVersion.Split('+')[0];
                                 Check(!string.IsNullOrWhiteSpace(version));
-                                Check(settingsPanel.Children.OfType<TextBlock>().Any(text => text.Text == $"WinDock — Version {version}"));
+                                Check(settingsView.VersionLabel.Text == $"WinDock — Version {version}");
                                 var settingsBitmap = new RenderTargetBitmap((int)Math.Ceiling(settingsWindow.ActualWidth), (int)Math.Ceiling(settingsWindow.ActualHeight), 96, 96, PixelFormats.Pbgra32);
                                 settingsBitmap.Render(settingsWindow);
                                 var settingsEncoder = new PngBitmapEncoder();

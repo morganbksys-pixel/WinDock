@@ -40,12 +40,14 @@ internal sealed class ContextMenuDismissal : IDisposable
         : this(() => panel.IsVisible, point => ContainsElement(panel, point) || extraContains(point),
             handle => new WindowInteropHelper(panel).Handle == handle || extraOwns(handle), close, owner) { }
 
-    private ContextMenuDismissal(Func<bool> isOpen, Func<Point, bool> contains, Func<nint, bool> owns, Action close, nint owner)
+    internal ContextMenuDismissal(Func<bool> isOpen, Func<Point, bool> contains, Func<nint, bool> owns, Action close, nint owner,
+        nint? initialForeground = null, bool observeDesktop = true)
     {
         this.isOpen = isOpen; this.contains = contains; this.owns = owns; this.close = close;
         this.owner = owner;
-        foreground = Native.GetForegroundWindow();
+        foreground = initialForeground ?? Native.GetForegroundWindow();
         callback = OnMouse;
+        if (!observeDesktop) return;
         hook = SetWindowsHookEx(14, callback, GetModuleHandle(null), 0);
         if (hook == 0) throw new Win32Exception(Marshal.GetLastWin32Error());
     }

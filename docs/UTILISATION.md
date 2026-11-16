@@ -2,11 +2,12 @@
 
 [← Retour à l’accueil](../README.md) · [Développement](DEVELOPPEMENT.md)
 
-Le guide détaillé de WinDock 0.0.6 pour Windows 10/11 x64 : ajout d’applications, organisation, réglages et mises à jour.
+Le guide détaillé de WinDock 0.0.9 pour Windows 10/11 x64 : ajout d’applications, organisation, réglages et mises à jour.
 
 - [Essayer](#essayer)
 - [Mettre à jour](#mettre-à-jour)
 - [Utilisation](#utilisation)
+- [Mode Coin](#mode-coin)
 - [Démarrage automatique](#démarrage-automatique)
 - [Données et limites](#données-et-limites)
 
@@ -15,7 +16,7 @@ Le guide détaillé de WinDock 0.0.6 pour Windows 10/11 x64 : ajout d’applicat
 Deux formats portables sont disponibles pour Windows x64, sans installation de .NET ni droits administrateur :
 
 - **EXE autonome** : placez `WinDock.exe` dans un dossier permanent puis lancez-le. Conservez ce nom pour le démarrage automatique. Le runtime .NET est inclus ; ses bibliothèques natives sont extraites au premier lancement.
-- **ZIP portable** (`WinDock-0.0.6-win-x64.zip`) : décompressez l’archive dans un dossier permanent puis lancez `WinDock.exe`. Conservez tous les fichiers extraits ensemble : ils comprennent le runtime .NET.
+- **ZIP portable** (`WinDock-0.0.9-win-x64.zip`) : décompressez l’archive dans un dossier permanent puis lancez `WinDock.exe`. Conservez tous les fichiers extraits ensemble : ils comprennent le runtime .NET.
 
 Le numéro de version est affiché en bas de **Réglages**. Pour produire les deux formats depuis les sources, consultez le [guide de développement](DEVELOPPEMENT.md#produire-une-livraison).
 
@@ -33,7 +34,7 @@ Le navigateur et la messagerie affichent leurs vrais noms et leurs icônes. Ils 
 
 La sélection est enregistrée immédiatement. Un dock existant, y compris vidé volontairement, n’est pas rempli à nouveau au redémarrage. La récupération d’un fichier de configuration corrompu ne déclenche pas non plus cette initialisation. Masquage automatique et apparence conservent leurs valeurs habituelles.
 
-**Réglages → Restaurer le dock par défaut…** ouvre immédiatement la confirmation avec **Préparation de la sélection…** et un indicateur d’activité. **Annuler** reste disponible pendant les réponses de Windows ou d’un dossier distant. La liste exacte remplace le chargement lorsqu’elle est prête, puis **Restaurer** devient disponible. En cas d’erreur, **Réessayer** relance la préparation dans cette fenêtre. La confirmation précise que vos raccourcis et groupes seront remplacés ; leurs fichiers d’origine sont conservés. **Annuler** nettoie les copies préparées sans modifier le dock, y compris si un résultat arrive après la fermeture. **Restaurer** enregistre le nouveau contenu et réactive la corbeille en une seule sauvegarde, avant de retirer les anciennes copies gérées inutilisées.
+**Réglages → Général → Restaurer le dock par défaut…** ouvre immédiatement la confirmation avec **Préparation de la sélection…** et un indicateur d’activité. **Annuler** reste disponible pendant les réponses de Windows ou d’un dossier distant. La liste exacte remplace le chargement lorsqu’elle est prête, puis **Restaurer** devient disponible. En cas d’erreur, **Réessayer** relance la préparation dans cette fenêtre. La confirmation précise que vos raccourcis et groupes seront remplacés ; leurs fichiers d’origine sont conservés. **Annuler** nettoie les copies préparées sans modifier le dock, y compris si un résultat arrive après la fermeture. **Restaurer** enregistre le nouveau contenu et réactive la corbeille en une seule sauvegarde, avant de retirer les anciennes copies gérées inutilisées.
 
 L’écran, le bord, l’opacité, le masquage automatique et le démarrage automatique sont conservés. Une erreur de préparation ou d’enregistrement garde l’ancien contenu et l’ancien état de la corbeille. Le navigateur et la messagerie sont résolus à nouveau lors de chaque restauration ; il n’existe pas de suivi automatique de vos changements d’association entre-temps. Les configurations existantes sont conservées lors d’une mise à jour : un ancien raccourci Paramètres n’est pas retiré automatiquement. Fermer les réglages pendant la préparation annule la restauration.
 
@@ -53,8 +54,8 @@ Le dock apparaît initialement en bas de l’écran principal. Après masquage, 
 - Pendant un glisser-déposer, l’élément déplacé s’atténue et une ligne bleue montre l’emplacement d’insertion. Le dépôt de nouveaux raccourcis respecte aussi ce repère.
 - Pour retirer une application, un dossier ou un séparateur, faites-le glisser à l’extérieur du dock : au-delà d’une marge de 24 pixels WPF, une corbeille rouge **Retirer du dock** apparaît près du pointeur. Relâchez pour retirer l’entrée. Revenez dans le dock pour réordonner, ou appuyez sur Échap pour annuler. Relâcher dans la petite marge extérieure annule également le déplacement. Les fichiers d’origine ne sont jamais supprimés.
 - Le clic droit propose **Retirer du dock**, **Réglages** et **Quitter WinDock**. Retirer une entrée ne supprime pas le fichier.
-- Les réglages permettent de choisir un bord et un écran. Si cet écran est débranché, le dock revient sur l’écran principal ; il retrouve l’écran choisi lorsque celui-ci revient.
-- Dans **Réglages**, le curseur **Opacité du fond** va de 10 % à 100 %, avec aperçu immédiat. Les icônes gardent leur opacité. La valeur est enregistrée à la fermeture des réglages.
+- Les réglages permettent de choisir un bord ou un coin et un écran. Si cet écran est débranché, le dock revient sur l’écran principal ; il retrouve l’écran choisi lorsque celui-ci revient.
+- Dans **Réglages → Apparence**, le curseur **Opacité du fond** va de 10 % à 100 %, avec aperçu immédiat. Les icônes gardent leur opacité. La valeur est enregistrée à la fermeture des réglages.
 - **Masquage automatique**, activé par défaut, peut être désactivé dans les réglages : le dock reste alors visible au-dessus des fenêtres ordinaires, sans réserver d’espace. Il disparaît en plein écran et réapparaît à sa fermeture. L’indicateur de bord est désactivé dans ce mode.
 - **Afficher la corbeille**, désactivé par défaut, ajoute la corbeille Windows en fin de dock. Son icône vide ou pleine est actualisée toutes les deux secondes. Les deux états utilisent les icônes Windows en haute définition (256 × 256 pixels), redimensionnées à la taille du dock ; si leur chargement échoue, WinDock utilise l’icône standard. Cliquez pour l’ouvrir ; **Vider la corbeille…** au clic droit utilise la confirmation Windows. La corbeille ne se déplace pas et n’accepte pas les dépôts ; retirez-la avec l’interrupteur des réglages. Une lecture indisponible conserve le dernier état connu.
 - Au survol, les libellés s’affichent centrés sous l’icône sur un fond opaque arrondi, ou au-dessus lorsque l’espace manque. Les noms longs reviennent à la ligne.
@@ -63,6 +64,28 @@ Le dock apparaît initialement en bas de l’écran principal. Après masquage, 
 - Le dock grandit et rétrécit avec ses entrées, sans bouton d’ajout. À la limite de l’écran, les icônes se réduisent proportionnellement pour rester toutes visibles, sans défilement.
 
 Le dock n’apparaît pas devant une fenêtre au premier plan couvrant tout l’écran. Son apparition ne prend pas le focus clavier. Les réglages et sélecteurs de fichiers sont des fenêtres interactives normales.
+
+## Réglages organisés
+
+La fenêtre **Réglages** est redimensionnable et démarre dans un format compact de 640 × 640 unités WPF, réduit si nécessaire à la zone disponible. Elle conserve son en-tête, le numéro de version et le bouton **Terminer** visibles ; seul le contenu de l’onglet défile sur un petit écran.
+
+- **Emplacement** : choix du bord ou du coin, orientation, activation au coin exact et écran. Sur une fenêtre assez large, le schéma et les options du coin se présentent côte à côte ; ils s’empilent lorsque l’espace manque.
+- **Apparence** : masquage automatique, corbeille et opacité du fond, avec aperçu immédiat.
+- **Général** : lancement au démarrage Windows et restauration du dock par défaut.
+
+Les changements sont appliqués immédiatement, et enregistrés selon le fonctionnement existant. L’opacité est mémorisée en fermant la fenêtre. La navigation par Tab et les touches habituelles des onglets reste disponible. Sans masquage automatique, le réglage du coin exact est désactivé et un rappel indique que le dock reste visible, sauf en plein écran.
+
+## Mode Coin
+
+Dans **Réglages → Emplacement → Coin**, sélectionnez un coin sur le schéma d’écran puis **Horizontal** ou **Vertical**. L’aperçu et le résumé indiquent le sens d’ouverture. La première sélection utilise le bas à droite, à l’horizontale, sur l’écran déjà choisi. Les mises à jour conservent les placements existants et le retour au mode **Bord** retrouve le bord précédemment choisi.
+
+Le repère en **L arrondi** se place dans le coin physique de l’écran, y compris au niveau de la barre des tâches. Il s’accentue à l’approche ; un survol continu de **300 ms** révèle le dock. Un passage plus rapide ou une sortie de cette petite zone annule l’ouverture. Le reste du bord ne déclenche rien. Le repère laisse traverser les clics ; les propres comportements de survol de Windows restent actifs.
+
+L’option **Exiger le coin exact**, proposée dans les réglages du mode Coin, limite le déclenchement aux **2 × 2 pixels physiques à l’extrémité du coin**, quelle que soit l’échelle Windows. Elle permet de viser les boutons de fenêtre voisins sans ouvrir le dock. Approcher le repère le rend toujours plus visible, mais ne lance pas le délai d’ouverture. Les **300 ms** commencent uniquement dans ce petit coin et repartent de zéro si la souris en sort. Le maintien après ouverture conserve son passage confortable vers les icônes. L’option est désactivée par défaut et les configurations existantes conservent leur comportement ; elle est mémorisée au retour entre Bord et Coin. Placer volontairement la souris tout au bout du bouton Fermer pendant 300 ms peut donc encore ouvrir le dock si ce bouton touche exactement le coin physique.
+
+Le dock apparaît dans la zone disponible fournie par Windows, avec une marge, pour éviter la barre des tâches réservée en haut, en bas, à gauche ou à droite. Déplacer cette barre recalcule le placement sans changer le coin physique du repère. Une barre Windows en masquage automatique peut temporairement se superposer au dock lorsqu’elle se révèle, car Windows ne réserve alors presque aucun espace. La première entrée est près du coin et les suivantes s’en éloignent : vers la gauche depuis un coin droit en mode horizontal, vers le haut depuis un coin bas en mode vertical. La corbeille reste à la fin de ce parcours. Changer de coin ne modifie pas l’ordre enregistré des entrées.
+
+Un passage entre le repère et la première icône maintient le dock ouvert pendant le déplacement de la souris. Il se masque après **600 ms** hors du dock et de ce passage. Les menus et groupes s’ouvrent vers l’intérieur de l’écran. L’apparition utilise un fondu, sans déplacer les cibles ; les animations sont désactivées lorsque Windows le demande. Le mode fixe conserve le même ancrage sans repère et le plein écran conserve son comportement habituel.
 
 ## Groupes dépliables
 
@@ -84,7 +107,7 @@ Avant la première sauvegarde introduisant des groupes, WinDock conserve une cop
 
 ## Démarrage automatique
 
-Dans **Réglages**, cochez **Lancer WinDock au démarrage de Windows** pour lancer le dock à l’ouverture de votre session. Cette option est désactivée par défaut et prend effet immédiatement. Elle crée un raccourci `WinDock.lnk` dans le dossier Démarrage de votre compte, sans droits administrateur. Décochez-la avant de supprimer la version portable. Après un déplacement du dossier, désactivez puis réactivez l’option depuis le nouvel emplacement. Si Windows a désactivé cette entrée dans ses applications de démarrage, réactivez-la également dans les paramètres Windows.
+Dans **Réglages → Général**, cochez **Lancer WinDock au démarrage de Windows** pour lancer le dock à l’ouverture de votre session. Cette option est désactivée par défaut et prend effet immédiatement. Elle crée un raccourci `WinDock.lnk` dans le dossier Démarrage de votre compte, sans droits administrateur. Décochez-la avant de supprimer la version portable. Après un déplacement du dossier, désactivez puis réactivez l’option depuis le nouvel emplacement. Si Windows a désactivé cette entrée dans ses applications de démarrage, réactivez-la également dans les paramètres Windows.
 
 ## Données et limites
 

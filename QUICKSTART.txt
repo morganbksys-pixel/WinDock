@@ -1,4 +1,4 @@
-WINDOCK — 0.0.6 — WINDOWS X64
+WINDOCK — 0.0.9 — WINDOWS X64
 
 Deux formats portables, avec le runtime .NET inclus :
 - EXE autonome : placez WinDock.exe dans un dossier permanent.
@@ -21,13 +21,16 @@ Deux formats portables, avec le runtime .NET inclus :
 4. Pour retrouver le dock masqué, survolez la petite barre arrondie visible
    en bas de l’écran, juste au-dessus de la barre des tâches. Elle devient
    plus opaque à l’approche et révèle le dock après un bref instant.
-5. Clic droit > Réglages pour choisir un autre bord ou un autre écran.
+5. Clic droit > Réglages > Emplacement pour choisir un bord, un coin ou un autre écran.
+   Apparence regroupe masquage, corbeille et opacité ; Général regroupe
+   le démarrage Windows et la restauration des raccourcis. Le bouton
+   Terminer reste accessible et chaque onglet défile sur les petits écrans.
 6. Glissez les icônes pour les réordonner. Le dock adapte sa taille au contenu.
    Si nécessaire, les icônes rétrécissent pour tenir à l’écran.
 7. Clic droit > Quitter WinDock pour arrêter l’application.
 8. Clic droit > Ajouter un séparateur pour organiser les icônes en groupes.
    Les séparateurs se déplacent par glisser-déposer, comme les icônes.
-9. Réglages > Opacité du fond pour ajuster la transparence (10 à 100 %).
+9. Réglages > Apparence > Opacité du fond pour ajuster la transparence (10 à 100 %).
 10. Un point vert indique un processus reconnu par son exécutable ou son identité Windows.
     Un clic retrouve la fenêtre ouverte, ou propose un choix par titre si plusieurs
     fenêtres sont reconnues. Sans fenêtre, il lance le raccourci. « Lancer à nouveau »
@@ -46,15 +49,15 @@ Deux formats portables, avec le runtime .NET inclus :
     vous pouvez retirer le raccourci du bureau. Un point orange signale
     une cible manquante et permet de la réparer au clic.
 
-14. Réglages > Lancer WinDock au démarrage de Windows active le lancement
+14. Réglages > Général > Lancer WinDock au démarrage de Windows active le lancement
     à l’ouverture de votre session. Option désactivée par défaut.
     Gardez le dossier portable à son emplacement après activation.
     Après déplacement : désactivez puis réactivez cette option.
     Avant suppression du dossier : désactivez cette option.
 
-15. Réglages > Masquage automatique : désactivez pour un dock fixe.
+15. Réglages > Apparence > Masquage automatique : désactivez pour un dock fixe.
     Le dock reste masqué pendant le plein écran et revient ensuite.
-16. Réglages > Afficher la corbeille : ajoute la corbeille Windows en fin de dock.
+16. Réglages > Apparence > Afficher la corbeille : ajoute la corbeille Windows en fin de dock.
     Un clic ouvre la corbeille ; clic droit > Vider demande confirmation Windows.
     Les icônes vide/pleine se rafraîchissent automatiquement.
     Cette icône ne se déplace pas et n’accepte aucun dépôt.
@@ -80,7 +83,7 @@ Deux formats portables, avec le runtime .NET inclus :
     ouvre sa grille ; un dépôt direct sur la tuile ajoute à la fin.
     Pas de sous-groupes ni de séparateurs internes.
 
-20. Réglages > Restaurer le dock par défaut… ouvre immédiatement la confirmation.
+20. Réglages > Général > Restaurer le dock par défaut… ouvre immédiatement la confirmation.
     « Préparation de la sélection… » s’affiche pendant la résolution ciblée Windows,
     sans recharger le catalogue complet. Annuler reste disponible ; Restaurer
     s’active lorsque la liste exacte des entrées est prête. Une erreur propose Réessayer.
@@ -93,6 +96,21 @@ Deux formats portables, avec le runtime .NET inclus :
     Les applications épinglées ne changent pas automatiquement entre deux restaurations.
     Une mise à jour ne retire pas vos anciens raccourcis Paramètres personnalisés.
     Si l’enregistrement échoue, l’ancien contenu et ses copies sont conservés.
+
+21. Réglages > Emplacement > Coin permet de choisir l’un des quatre coins
+    physiques de l’écran, puis une orientation horizontale ou verticale.
+    Survolez le petit repère en L arrondi pendant 300 ms pour ouvrir le dock.
+    La première icône reste près du coin ; les suivantes s’en éloignent.
+    Le dock reste dans la zone disponible, à l’écart de la barre des tâches.
+    Le passage depuis le repère le maintient ouvert ; il se masque après
+    600 ms hors de cette zone et du dock. Les clics traversent le repère.
+    Les survols Windows dans ces coins restent actifs. Le mode fixe conserve
+    le même emplacement, sans repère. Les anciens placements sont conservés.
+    Pour éviter les ouvertures près de la croix de fermeture, activez
+    « Exiger le coin exact » : placez la souris tout au bout du coin pendant
+    300 ms. Seuls les 2 × 2 pixels physiques de l’extrémité déclenchent alors
+    l’ouverture. Le repère et le passage restent confortables une fois ouvert.
+    Cette option est désactivée par défaut et reste propre au mode Coin.
 
 Avant la première sauvegarde avec des groupes, une copie datée
 settings.json.before-groups-* est conservée dans %LocalAppData%\WinDock.

@@ -21,6 +21,17 @@ public sealed class DockSettings
     public bool AutoHide { get; set; } = true;
     public bool ShowRecycleBin { get; set; }
     public DockEdge Edge { get; set; } = DockEdge.Bottom;
+    /// <summary>Whether the dock is centered on an edge or anchored to a corner.</summary>
+    public DockPlacementMode PlacementMode { get; set; } = DockPlacementMode.Edge;
+    /// <summary>Physical monitor corner used in corner mode.</summary>
+    public DockCorner Corner { get; set; } = DockCorner.BottomRight;
+    /// <summary>Direction of the dock's main axis in corner mode.</summary>
+    public DockOrientation Orientation { get; set; } = DockOrientation.Horizontal;
+    /// <summary>Restricts corner activation to its outermost two physical pixels on both axes.</summary>
+    public bool RequireExactCorner { get; set; }
+    /// <summary>Resolved layout, independent of WPF and desktop coordinates.</summary>
+    [JsonIgnore]
+    public DockLayout Layout => new(PlacementMode, Edge, Corner, Orientation);
     public string? MonitorDevice { get; set; }
     /// <summary>Background opacity from 0.1 to 1; icons remain fully opaque.</summary>
     public double BackgroundOpacity { get; set; } = 238.0 / 255;
@@ -55,7 +66,8 @@ public sealed class SettingsStore(string path)
             catch (DirectoryNotFoundException) { status = SettingsLoadStatus.Missing; return new(); }
             var settings = JsonSerializer.Deserialize<DockSettings>(data, Options)
                 ?? throw new JsonException("Configuration vide.");
-            if (!Enum.IsDefined(settings.Edge) || !double.IsFinite(settings.BackgroundOpacity) ||
+            if (!Enum.IsDefined(settings.Edge) || !Enum.IsDefined(settings.PlacementMode) ||
+                !Enum.IsDefined(settings.Corner) || !Enum.IsDefined(settings.Orientation) || !double.IsFinite(settings.BackgroundOpacity) ||
                 settings.BackgroundOpacity is < 0.1 or > 1 || settings.Entries is null ||
                 !EntryRules.IsValid(settings.Entries) ||
                 settings.Entries.Select(e => e.Id).Distinct().Count() != settings.Entries.Count)

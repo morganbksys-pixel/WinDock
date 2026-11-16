@@ -45,6 +45,26 @@ Pour générer les aperçus de l’interface réelle :
 dotnet run --project tests/WinDock.Tests -c Release --no-build -- --preview artifacts/previews
 ```
 
+Le harnais complet ouvre des fenêtres, menus et dialogues et vérifie leur activation. Exécutez-le lorsque le bureau est disponible. Pour travailler en parallèle sur le poste, utilisez les contrôles du mode Coin **hors écran** : aucune fenêtre n’est affichée ou activée, aucun handle de fenêtre du dock n’est créé.
+
+```powershell
+dotnet run --project tests/WinDock.Tests -c Release --no-build -- --background --preview artifacts/previews-background
+```
+
+Ce mode couvre la compatibilité des réglages, les huit combinaisons coin/orientation, les zones physiques d’activation et le passage depuis le coin, les coordonnées négatives, les échelles de 100 à 200 %, le délai de survol, le rendu et le réordonnancement des entrées avec persistance. Il vérifie aussi l’activation au coin exact : 2 × 2 pixels physiques, exclusion des pixels voisins, annulation du délai et persistance du choix. Les réglages et leurs libellés sont rendus hors écran, ainsi que les transitions interrompues. Les fichiers `corner-settings-*.png` et `corner-*.png` sont produits uniquement à partir de contrôles mesurés hors écran.
+
+Les contrôles de menus hors écran simulent le positionnement natif pour vérifier la conservation de la superposition et du focus, puis injectent les changements de fenêtre, Échap et clics extérieurs, sans hook global. Le test interactif de superposition appelle trois fois le même repositionnement que le minuteur et distingue explicitement un menu fermé d’un menu ouvert passé derrière le dock. Une attente sur le bureau réel confondait auparavant ces cas, puisque l’utilisation d’une autre application ferme normalement le menu. Ces contrôles simulés ne remplacent pas la validation de l’empilement réel des fenêtres et du focus sur un bureau disponible, ni les essais matériels à DPI mixtes.
+
+Pour vérifier la superposition **réelle** pendant que le bureau est utilisé :
+
+```powershell
+dotnet run --project tests/WinDock.Tests -c Release --no-build -- --isolated-desktop artifacts/isolated-desktop-previews
+```
+
+Le lanceur crée un bureau Win32 distinct et démarre un processus sans console avec ce bureau dans `STARTUPINFO.lpDesktop`. Il n’appelle jamais `SwitchDesktop`. Le processus vérifie son bureau et celui de ses fenêtres avant et pendant les essais ; toute absence d’isolation interrompt les tests, sans repli sur le bureau utilisateur. Le processus dispose de deux minutes au maximum et les handles sont libérés à sa sortie. `isolated-tests.log` contient les résultats ; `settings-Emplacement.png`, `settings-Apparence.png` et `settings-Général.png` montrent les véritables contrôles rendus sur ce bureau.
+
+Cette suite vérifie les HWND et leur ordre natif pour quatre bords et huit combinaisons coin/orientation, avec deux repositionnements espacés d’une seconde par cas, les groupes et les libellés. Elle valide aussi les trois onglets des réglages, l’application et la persistance des options, et la disponibilité du bouton Terminer dans une fenêtre de 300 unités de hauteur. Les entrées physiques et le bureau d’entrée de l’utilisateur ne sont pas pilotés. Le focus réel sur le bureau actif et les configurations matérielles multi-écrans à DPI mixtes restent des essais manuels distincts.
+
 Ce mode vérifie aussi la résolution de 256 × 256 pixels, le gel et le cache des deux icônes système de la corbeille. Il produit les comparaisons `recycle-empty-100.png`, `recycle-full-100.png` et leurs variantes `150` et `200` : l’icône standard est à gauche, la haute définition à droite, à une taille d’affichage de 48 pixels WPF. Les rendus à 100 %, 150 % et 200 % ne remplacent pas les essais matériels à DPI mixtes. Ces comparaisons chargent les icônes vide et pleine sans modifier le contenu de la corbeille.
 
 Pour tester le catalogue réel, la persistance des raccourcis et l’identité des processus (ce test ouvre la Calculatrice) :
@@ -87,7 +107,7 @@ Après validation d’une nouvelle livraison, vous pouvez supprimer les ancienne
 
 À vérifier sur le poste d’utilisation ; les tests de géométrie ne remplacent pas ces essais matériels :
 
-- Tester les quatre bords avec la barre des tâches visible et masquée automatiquement.
+- Tester les quatre bords et les huit combinaisons coin/orientation, avec la barre des tâches visible et masquée automatiquement, placée sur chacun des quatre côtés. Déplacer la barre pendant que WinDock fonctionne et vérifier le nouveau placement ainsi que le passage depuis le repère physique.
 - Déplacer le dock entre des écrans à 100 %, 150 % et 200 %, puis débrancher et rebrancher l’écran sélectionné.
 - Saisir du texte dans une autre application, révéler le dock et vérifier que la saisie garde son focus.
 - Vérifier le masquage en plein écran, la temporisation et le maintien pendant les menus, les sélecteurs et les glisser-déposer.

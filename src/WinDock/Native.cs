@@ -84,8 +84,13 @@ internal static class Native
         MakeNonActivating(hwnd);
         SetWindowLongPtr(hwnd, -20, GetWindowLongPtr(hwnd, -20) | 0x20);
     }
+    internal delegate bool WindowPositioner(nint hwnd, nint after, int x, int y, int width, int height, uint flags);
+
     // Keep popup menus above the dock during periodic placement updates.
-    public static void Position(nint hwnd, PixelRect rect) => SetWindowPos(hwnd, 0,
+    public static void Position(nint hwnd, PixelRect rect) => Position(hwnd, rect, SetWindowPos);
+
+    // The same placement operation can be exercised against a simulated desktop without creating HWNDs.
+    internal static void Position(nint hwnd, PixelRect rect, WindowPositioner position) => position(hwnd, 0,
         (int)Math.Round(rect.X), (int)Math.Round(rect.Y), (int)Math.Round(rect.Width), (int)Math.Round(rect.Height), 0x0014); // SWP_NOZORDER | SWP_NOACTIVATE
 
     public static bool FullScreen(Display display, nint ownWindow)
