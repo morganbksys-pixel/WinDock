@@ -1016,6 +1016,9 @@ internal static partial class Program
                     PumpUntil(() => File.Exists(output), 10000);
                     Check(File.ReadAllText(output) == work + "|été espaces" && service.Lists.Count == 1);
                     File.Delete(output);
+                    // The launched helper may still be exiting and changing the foreground.
+                    // This group verifies relaunch arguments, not input-driven menu dismissal.
+                    ((DispatcherTimer)typeof(DockWindow).GetField("timer", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(window)!).Stop();
                     var choosing = window.OpenEntryAsync(entry, button);
                     service.Lists[^1].SetResult([new(1, 10, entry.Path, null, "Premier"), new(2, 10, entry.Path, null, "Second")]);
                     PumpUntil(() => choosing.IsCompleted);
