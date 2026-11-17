@@ -216,8 +216,8 @@ internal static partial class Program
                 reverse.IsChecked = true;
                 Check(settings.ReverseIconOrder && store.Load(out _).ReverseIconOrder);
                 Check(VisualChildren(picker).OfType<TextBlock>().Any(t => t.Text.Contains("Vers le bas\nOrdre inversé")));
-                var reverseMenu = ReverseOrderItem(window.ContextMenu);
-                reverseMenu.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Check(!MenuHeaders(window.ContextMenu).Contains(ReverseOrderLabel));
+                reverse.IsChecked = false;
                 Check(!settings.ReverseIconOrder && reverse.IsChecked == false && !store.Load(out _).ReverseIconOrder);
                 reverse.IsChecked = true;
                 if (args.Length == 2 && args[0] == "--preview") SavePreview(dialog, Path.Combine(args[1], "corner-settings.png"));

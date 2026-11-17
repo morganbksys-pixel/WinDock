@@ -52,7 +52,9 @@ internal static partial class Program
                     timer.Start();
                     try { PumpUntil(() => updates >= 2, 8000); }
                     finally { timer.Stop(); }
-                    Check(menu.IsOpen && IsAbove(popup, hwnd)); menu.IsOpen = false;
+                    Check(menu.IsOpen && IsAbove(popup, hwnd));
+                    if (layout == AllLayouts().Last()) SavePreview(menu, Path.Combine(output, "menu-application-with-groups.png"));
+                    menu.IsOpen = false;
                     window.ToggleGroup(group);
                     var groupPanel = (GroupPanel)typeof(DockWindow).GetField("groupPanel", PrivateInstance)!.GetValue(window)!;
                     var groupHwnd = new WindowInteropHelper(groupPanel).Handle;
@@ -93,7 +95,7 @@ internal static partial class Program
                         var reverse = VisualChildren(picker).OfType<CheckBox>().Single(c => System.Windows.Automation.AutomationProperties.GetName(c) == ReverseOrderLabel);
                         reverse.IsChecked = true;
                         Check(settings.ReverseIconOrder);
-                        ReverseOrderItem(window.ContextMenu).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                        reverse.IsChecked = false;
                         Check(!settings.ReverseIconOrder && reverse.IsChecked == false && !dialog.Topmost);
                         reverse.IsChecked = true;
                         window.UpdateLayout();
@@ -102,26 +104,30 @@ internal static partial class Program
                         Check(reversedGroup.Items.Children.OfType<Button>().Select(b => ((DockEntry)b.Tag).Id)
                             .SequenceEqual(settings.Entries.Where(e => e.GroupId == group.Id).Select(e => e.Id)));
                         var groupButton = panel.Children.OfType<Button>().Single(b => b.Tag is DockEntry e && e.Id == group.Id);
-                        ReverseOrderItem(groupButton.ContextMenu).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                        Check(MenuHeaders(groupButton.ContextMenu).SequenceEqual(new[] { "Ajouter…", "Renommer…", "Dissoudre le groupe" }));
+                        groupButton.ContextMenu.PlacementTarget = groupButton; groupButton.ContextMenu.IsOpen = true;
+                        PumpUntil(() => PresentationSource.FromVisual(groupButton.ContextMenu) is HwndSource);
+                        SavePreview(groupButton.ContextMenu, Path.Combine(output, "menu-group.png"));
+                        groupButton.ContextMenu.IsOpen = false;
+                        reverse.IsChecked = false;
                         Check(!settings.ReverseIconOrder && reverse.IsChecked == false && !reversedGroup.IsVisible);
                         reverse.IsChecked = true;
                         var dockMenu = window.ContextMenu;
                         dockMenu.PlacementTarget = window; dockMenu.IsOpen = true;
                         PumpUntil(() => PresentationSource.FromVisual(dockMenu) is HwndSource);
-                        var reverseCommand = ReverseOrderItem(dockMenu);
-                        Check(reverseCommand.Visibility == Visibility.Visible && reverseCommand.IsChecked);
+                        Check(MenuHeaders(dockMenu).SequenceEqual(new[] { "Ajouter…", "Ajouter un séparateur", "Réglages…", "Quitter WinDock" }));
                         var reversedPopup = ((HwndSource)PresentationSource.FromVisual(dockMenu)).Handle;
                         typeof(DockWindow).GetMethod("RefreshPlacement", PrivateInstance)!.Invoke(window, null);
                         Check(dockMenu.IsOpen && IsAbove(reversedPopup, hwnd));
                         SavePreview(dockMenu, Path.Combine(output, "corner-menu-reversed.png"));
-                        reverseCommand.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                        reverse.IsChecked = false;
                         Check(!dockMenu.IsOpen && !settings.ReverseIconOrder && reverse.IsChecked == false);
                         reverse.IsChecked = true;
                         var modeButtons = VisualChildren(picker).OfType<RadioButton>().ToArray();
                         modeButtons.Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Bord").IsChecked = true;
                         dockMenu.IsOpen = true;
                         PumpUntil(() => PresentationSource.FromVisual(dockMenu) is HwndSource);
-                        Check(reverseCommand.Visibility == Visibility.Collapsed && settings.ReverseIconOrder);
+                        Check(!MenuHeaders(dockMenu).Contains(ReverseOrderLabel) && settings.ReverseIconOrder);
                         dockMenu.IsOpen = false;
                         modeButtons.Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Coin").IsChecked = true;
                         Check(reverse.IsChecked == true && settings.Layout.ReverseIconOrder);

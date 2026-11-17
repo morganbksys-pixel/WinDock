@@ -37,7 +37,7 @@ public sealed partial class DockWindow
             } : icon is null
                 ? new TextBlock { Text = "◇", FontSize = 32 }
                 : new Image { Source = icon, Width = 48, Height = 48, Stretch = Stretch.Uniform },
-            ContextMenu = entry.IsGroup ? CreateGroupMenu(entry) : CreateMenu(entry)
+            ContextMenu = entry.IsGroup ? CreateGroupMenu(entry) : CreateEntryMenu(entry)
         };
         if (!entry.IsSeparator && !entry.IsGroup)
         {
@@ -140,15 +140,9 @@ public sealed partial class DockWindow
     private ContextMenu CreateGroupMenu(DockEntry group)
     {
         var menu = new ContextMenu { StaysOpen = false }; ConfigureMenu(menu);
-        void Add(string name, Action action)
-        {
-            var item = new MenuItem { Header = name };
-            item.Click += (_, _) => { menu.IsOpen = false; action(); }; menu.Items.Add(item);
-        }
-        Add("Ajouter…", () => OpenCatalog(group.Id));
-        Add("Renommer…", () => RenameGroup(group));
-        Add("Dissoudre le groupe", () => { CloseGroup(); CommitEntries(EntryRules.Dissolve(settings.Entries, group.Id)); });
-        AddReverseOrderMenuItem(menu);
+        AddMenuAction(menu, "Ajouter…", () => OpenCatalog(group.Id));
+        AddMenuAction(menu, "Renommer…", () => RenameGroup(group));
+        AddMenuAction(menu, "Dissoudre le groupe", () => { CloseGroup(); CommitEntries(EntryRules.Dissolve(settings.Entries, group.Id)); });
         return menu;
     }
 

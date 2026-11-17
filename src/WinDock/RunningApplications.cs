@@ -10,7 +10,9 @@ namespace WinDock;
 /// <summary>Matches launcher targets to running executable paths without inspecting process contents.</summary>
 internal sealed class RunningApplications
 {
-    private readonly Dictionary<string, (DateTime Modified, string? Target)> shortcuts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ApplicationIdentityResolver identities;
+
+    internal RunningApplications(ApplicationIdentityResolver? identities = null) => this.identities = identities ?? ApplicationIdentityResolver.Shared;
     [DllImport("kernel32.dll", SetLastError = true)] private static extern SafeProcessHandle OpenProcess(uint access, bool inherit, int processId);
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern bool QueryFullProcessImageName(SafeProcessHandle process, uint flags, StringBuilder name, ref int size);
@@ -25,10 +27,13 @@ internal sealed class RunningApplications
 
     internal HashSet<Guid> Snapshot(IReadOnlyList<DockEntry> entries, HashSet<string> running, HashSet<string> applicationIds)
     {
-        return entries.Where(entry => !entry.IsSeparator && !entry.IsGroup &&
-            ((entry.ApplicationId is { } id && applicationIds.Contains(id)) ||
-             (entry.SourcePath?.StartsWith("shell:AppsFolder\\", StringComparison.OrdinalIgnoreCase) != true &&
-              ResolveTarget(entry.Path) is { } target && running.Any(path => MatchesExecutable(target, path)))))
+        return entries.Where(entry =>
+            {
+                var identity = identities.Resolve(entry);
+                return !identity.IsExplorer &&
+                    (identity.ApplicationId is { } id && applicationIds.Contains(id) ||
+                     identity.Executable is { } target && running.Any(path => MatchesExecutable(target, path)));
+            })
             .Select(entry => entry.Id).ToHashSet();
     }
 
@@ -47,34 +52,7 @@ internal sealed class RunningApplications
             Version.TryParse(versionName[4..], out _) && File.Exists(Path.Combine(root, "Update.exe"));
     }
 
-    internal string? ResolveTarget(string path)
-    {
-        if (Path.GetExtension(path).Equals(".exe", StringComparison.OrdinalIgnoreCase)) return Normalize(path);
-        if (!Path.GetExtension(path).Equals(".lnk", StringComparison.OrdinalIgnoreCase) || !File.Exists(path)) return null;
-        var modified = File.GetLastWriteTimeUtc(path);
-        if (shortcuts.TryGetValue(path, out var cached) && cached.Modified == modified) return cached.Target;
-        object? shell = null;
-        object? shortcut = null;
-        string? target = null;
-        try
-        {
-            var type = Type.GetTypeFromProgID("WScript.Shell");
-            if (type is null) return null;
-            shell = Activator.CreateInstance(type);
-            if (shell is null) return null;
-            shortcut = ((dynamic)shell).CreateShortcut(path);
-            string candidate = ((dynamic)shortcut).TargetPath;
-            if (Path.GetExtension(candidate).Equals(".exe", StringComparison.OrdinalIgnoreCase)) target = Normalize(candidate);
-        }
-        catch (Exception ex) when (ex is COMException or IOException or UnauthorizedAccessException or ArgumentException) { }
-        finally
-        {
-            if (shortcut is not null) Marshal.ReleaseComObject(shortcut);
-            if (shell is not null) Marshal.ReleaseComObject(shell);
-        }
-        shortcuts[path] = (modified, target);
-        return target;
-    }
+    internal string? ResolveTarget(string path) => identities.ResolveTarget(path);
 
     private static string? Normalize(string path)
     {
@@ -107,9 +85,13 @@ internal sealed class RunningApplications
         {
             using (process)
             {
-                var identity = ReadIdentity(process.Id);
-                if (identity.Path is { } path) paths.Add(path);
-                if (identity.ApplicationId is { } appId) applicationIds.Add(appId);
+                try
+                {
+                    var identity = ReadIdentity(process.Id);
+                    if (identity.Path is { } path) paths.Add(path);
+                    if (identity.ApplicationId is { } appId) applicationIds.Add(appId);
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or ArgumentException) { }
             }
         }
         return (paths, applicationIds);

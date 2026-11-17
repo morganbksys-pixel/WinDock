@@ -10,8 +10,6 @@ internal static partial class Program
 {
     private const string ReverseOrderLabel = "Inverser l’ordre des icônes";
 
-    private static MenuItem ReverseOrderItem(ContextMenu menu) => menu.Items.OfType<MenuItem>().Single(i => Equals(i.Header, ReverseOrderLabel));
-
     private static void RunReverseIconOrderCoreTests(string temporary)
     {
         Run("Reverse icon order retains legacy defaults, stored entries and all corner and edge preferences", () =>
@@ -76,11 +74,15 @@ internal static partial class Program
                     }
                     Arrange();
                     var original = panel.Children.OfType<Button>().Select(b => b.Tag).ToArray();
-                    var command = ReverseOrderItem(window.ContextMenu);
-                    Check(command.IsCheckable && command.Visibility == Visibility.Visible && !command.IsChecked);
+                    var picker = new DockPositionPicker(settings, () => typeof(DockWindow).GetMethod("ApplyPositionChange", PrivateInstance)!.Invoke(window, null));
+                    picker.Measure(new Size(600, 600));
+                    picker.Arrange(new Rect(new Point(), picker.DesiredSize)); picker.UpdateLayout();
+                    var command = VisualChildren(picker).OfType<CheckBox>().Single(c => AutomationProperties.GetName(c) == ReverseOrderLabel);
+                    Check(command.Visibility == Visibility.Visible && command.IsChecked == false);
+                    Check(!MenuHeaders(window.ContextMenu).Contains(ReverseOrderLabel));
                     for (var flip = 0; flip < 2; flip++)
                     {
-                        command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); Arrange();
+                        command.IsChecked = !command.IsChecked; Arrange();
                         Check(settings.ReverseIconOrder == (flip == 0) && command.IsChecked == (flip == 0));
                         Check(panel.Children.OfType<Button>().Select(b => b.Tag).SequenceEqual(flip == 0 ? original.Reverse() : original));
                         Check(settings.Entries.SequenceEqual(entries) && store.Load(out _).Entries.SequenceEqual(entries));
@@ -101,7 +103,7 @@ internal static partial class Program
                         }
                         if (count == 6)
                         {
-                            foreach (var button in physical) Check(ReverseOrderItem(button.ContextMenu).IsChecked == (flip == 0));
+                            foreach (var button in physical) Check(!MenuHeaders(button.ContextMenu).Contains(ReverseOrderLabel));
                             var target = logical.First(b => b.Tag is DockEntry);
                             var origin = target.TranslatePoint(new Point(), panel);
                             var fraction = settings.Layout.Reversed ? 0.9 : 0.1;
@@ -118,13 +120,12 @@ internal static partial class Program
                             Arrange();
                         }
                     }
-                    command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    command.IsChecked = true;
                     settings.PlacementMode = DockPlacementMode.Edge;
                     typeof(DockWindow).GetMethod("RenderItems", PrivateInstance)!.Invoke(window, null);
                     Check(panel.Children.OfType<Button>().Where(b => b.Tag is DockEntry).Select(b => (DockEntry)b.Tag)
                         .SequenceEqual(entries.Where(e => e.GroupId is null)));
-                    foreach (var button in panel.Children.OfType<Button>()) Check(ReverseOrderItem(button.ContextMenu).Visibility == Visibility.Collapsed);
-                    command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    foreach (var button in panel.Children.OfType<Button>()) Check(!MenuHeaders(button.ContextMenu).Contains(ReverseOrderLabel));
                     Check(settings.ReverseIconOrder);
                     settings.PlacementMode = DockPlacementMode.Corner;
                     typeof(DockWindow).GetMethod("RenderItems", PrivateInstance)!.Invoke(window, null);

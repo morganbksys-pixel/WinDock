@@ -31,6 +31,7 @@ public sealed partial class DockWindow : Window
     private Guid? pressedEntry;
     private Window? settingsWindow;
     private DockPositionPicker? settingsPositionPicker;
+    private CheckBox? settingsRecycleToggle;
     private IndicatorWindow? indicator;
     private PixelRect indicatorArea;
     private DockLayout? placedLayout;
@@ -40,6 +41,8 @@ public sealed partial class DockWindow : Window
     private readonly RunningApplications runningApplications = new();
     private readonly IApplicationWindows applicationWindows;
     private readonly IDefaultDockService defaultDock;
+    private readonly IExplorerRestarter explorerRestarter;
+    private readonly Func<bool> confirmExplorerRestart;
     private bool restoringDefaults;
     private readonly HashSet<Guid> openingEntries = [];
     private int openGeneration;
@@ -56,13 +59,15 @@ public sealed partial class DockWindow : Window
     private readonly IRecycleBinService recycleBin;
     private RecycleBinSnapshot recycleState = new(null, null);
     private Button? recycleButton;
+    private MenuItem? recycleEmptyItem;
     private bool checkingRecycle, emptyingRecycle;
     private long lastRecycleCheck;
 
     public DockWindow(DockSettings settings, SettingsStore store) : this(settings, store, new RecycleBinService()) { }
 
     internal DockWindow(DockSettings settings, SettingsStore store, IRecycleBinService recycleBin,
-        IApplicationWindows? applicationWindows = null, IDefaultDockService? defaultDock = null)
+        IApplicationWindows? applicationWindows = null, IDefaultDockService? defaultDock = null,
+        IExplorerRestarter? explorerRestarter = null, Func<bool>? confirmExplorerRestart = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(store);
@@ -71,6 +76,8 @@ public sealed partial class DockWindow : Window
         this.recycleBin = recycleBin;
         this.applicationWindows = applicationWindows ?? new ApplicationWindows();
         this.defaultDock = defaultDock ?? new DefaultDockService(store);
+        this.explorerRestarter = explorerRestarter ?? new ExplorerRestarter();
+        this.confirmExplorerRestart = confirmExplorerRestart ?? ConfirmExplorerRestart;
         shortcuts = new ManagedShortcuts(store);
         dockBackground.Opacity = settings.BackgroundOpacity;
         Title = "WinDock";
@@ -89,7 +96,7 @@ public sealed partial class DockWindow : Window
         AllowDrop = true;
         fittedItems.Child = items;
         Content = DockAppearance.Surface(dockBackground, fittedItems, new Thickness(8));
-        ContextMenu = CreateMenu(null);
+        ContextMenu = CreateDockMenu();
         PreviewDragOver += OnDragOver;
         Drop += OnDrop;
         DragLeave += (_, e) =>
@@ -239,6 +246,7 @@ public sealed partial class DockWindow : Window
             : System.Windows.Controls.Primitives.PlacementMode.MousePoint;
         CloseLabels();
         recycleButton = null;
+        recycleEmptyItem = null;
         runningIndicators.Clear();
         items.ShowInsertion(null);
         items.Children.Clear();
@@ -256,7 +264,7 @@ public sealed partial class DockWindow : Window
         foreach (var entry in settings.Entries.Where(e => e.GroupId is null)) items.Children.Add(CreateEntryButton(entry));
         if (settings.ShowRecycleBin)
         {
-            recycleButton = new Button { Width = 60, Height = 60, Focusable = false, ContextMenu = CreateMenu(null, true) };
+            recycleButton = new Button { Width = 60, Height = 60, Focusable = false, ContextMenu = CreateRecycleMenu() };
             recycleButton.Click += async (_, _) => await RunRecycleActionAsync(false);
             items.Children.Add(recycleButton);
             UpdateRecycleButton();
@@ -282,6 +290,7 @@ public sealed partial class DockWindow : Window
 
     private void UpdateRecycleButton()
     {
+        UpdateRecycleMenu();
         if (recycleButton is null) return;
         recycleButton.Content = recycleState.Icon is { } icon
             ? new Image { Source = icon, Width = 48, Height = 48, Stretch = Stretch.Uniform }
@@ -313,8 +322,9 @@ public sealed partial class DockWindow : Window
 
     private async Task RunRecycleActionAsync(bool empty)
     {
-        if (emptyingRecycle) return;
+        if (emptyingRecycle || empty && recycleState.IsEmpty == true) return;
         emptyingRecycle = true;
+        UpdateRecycleMenu();
         interactionLocks++;
         try
         {
@@ -323,24 +333,82 @@ public sealed partial class DockWindow : Window
         catch (OperationCanceledException) { }
         catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
         { if (!closed) ShowNotice("Impossible d’accéder à la corbeille.\n\n" + ex.Message); }
-        finally { emptyingRecycle = false; interactionLocks--; lastRecycleCheck = 0; }
+        finally { emptyingRecycle = false; UpdateRecycleMenu(); interactionLocks--; lastRecycleCheck = 0; }
         await RefreshRecycleAsync();
     }
 
-    private ContextMenu CreateMenu(DockEntry? entry, bool isRecycleBin = false)
+    private static MenuItem AddMenuAction(ContextMenu menu, string title, Action action)
+    {
+        var item = new MenuItem { Header = title };
+        item.Click += (_, _) => { menu.IsOpen = false; action(); };
+        menu.Items.Add(item);
+        return item;
+    }
+
+    private ContextMenu CreateDockMenu()
+    {
+        var menu = new ContextMenu { StaysOpen = false };
+        ConfigureMenu(menu);
+        AddMenuAction(menu, "Ajouter…", () => OpenCatalog(null));
+        AddMenuAction(menu, "Ajouter un séparateur", () =>
+        {
+            var next = settings.Entries.ToList(); next.Add(new(Guid.NewGuid(), "", true));
+            CommitEntries(next);
+        });
+        menu.Items.Add(new Separator());
+        AddMenuAction(menu, "Réglages…", OpenSettings);
+        AddMenuAction(menu, "Quitter WinDock", Close);
+        return menu;
+    }
+
+    private ContextMenu CreateRecycleMenu()
+    {
+        var menu = new ContextMenu { StaysOpen = false };
+        ConfigureMenu(menu);
+        recycleEmptyItem = AddMenuAction(menu, "Vider la corbeille…", async () => await RunRecycleActionAsync(true));
+        AddMenuAction(menu, "Masquer du dock", () => SetRecycleBinVisible(false));
+        menu.Opened += (_, _) => UpdateRecycleMenu();
+        UpdateRecycleMenu();
+        return menu;
+    }
+
+    private void UpdateRecycleMenu()
+    {
+        if (recycleEmptyItem is not null) recycleEmptyItem.IsEnabled = recycleState.IsEmpty != true && !emptyingRecycle;
+    }
+
+    private void SetRecycleBinVisible(bool visible)
+    {
+        settings.ShowRecycleBin = visible;
+        if (settingsRecycleToggle is not null) settingsRecycleToggle.IsChecked = visible;
+        PersistAndRender();
+        lastRecycleCheck = 0;
+    }
+
+    private ContextMenu CreateEntryMenu(DockEntry entry)
     {
         var menu = new ContextMenu { StaysOpen = false };
         MenuItem? closeItem = null;
+        MenuItem? launchItem = null;
+        var isExplorer = ApplicationIdentityResolver.IsExplorerExecutable(entry.Path) || ApplicationIdentityResolver.IsExplorerExecutable(entry.SourcePath);
         var generation = 0;
         ConfigureMenu(menu);
         menu.Opened += async (_, _) =>
         {
             var request = ++generation;
-            if (closeItem is null || entry is null || !menu.IsOpen) return;
+            if (closeItem is null || !menu.IsOpen) return;
             menu.Items.Remove(closeItem);
             try
             {
-                var count = await applicationWindows.CountAsync(entry, lifetime.Token);
+                var countTask = applicationWindows.CountAsync(entry, lifetime.Token);
+                var identity = await StaWorker.RunAsync(_ => ApplicationIdentityResolver.Shared.Resolve(entry), lifetime.Token);
+                if (!closed && menu.IsOpen && request == generation && IsCurrentEntry(entry) && launchItem is not null)
+                {
+                    isExplorer = identity.IsExplorer;
+                    launchItem.Header = isExplorer ? "Redémarrer l’Explorateur Windows…" : "Lancer à nouveau";
+                    launchItem.IsEnabled = !isExplorer || !restartingExplorer;
+                }
+                var count = await countTask;
                 if (closed || !menu.IsOpen || request != generation || !settings.Entries.Contains(entry)) return;
                 if (count > 0)
                 {
@@ -353,85 +421,44 @@ public sealed partial class DockWindow : Window
             { /* Unavailable windows must not expose a stale close command. */ }
         };
         menu.Closed += (_, _) => generation++;
-        void Item(string title, Action action)
+        if (!entry.IsSeparator)
         {
-            var item = new MenuItem { Header = title };
-            item.Click += (_, _) => { menu.IsOpen = false; action(); };
-            menu.Items.Add(item);
-        }
-        if (isRecycleBin)
-        {
-            Item("Ouvrir", async () => await RunRecycleActionAsync(false));
-            Item("Vider la corbeille…", async () => await RunRecycleActionAsync(true));
-            menu.Items.Add(new Separator());
-        }
-        if (entry is not null)
-        {
-            if (!entry.IsSeparator)
+            closeItem = new MenuItem();
+            closeItem.Click += async (_, _) =>
             {
-                closeItem = new MenuItem();
-                closeItem.Click += async (_, _) =>
+                menu.IsOpen = false;
+                interactionLocks++;
+                try
                 {
-                    menu.IsOpen = false;
-                    interactionLocks++;
-                    try
-                    {
-                        var failures = await applicationWindows.CloseAsync(entry, lifetime.Token);
-                        if (!closed && failures > 0)
-                            ShowNotice("Impossible de demander la fermeture de certaines fenêtres. L’accès peut être refusé par Windows.");
-                    }
-                    catch (OperationCanceledException) { }
-                    catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
-                    { if (!closed) ShowNotice("Impossible de demander la fermeture de l’application.\n\n" + ex.Message); }
-                    finally { interactionLocks--; lastRunningCheck = 0; }
-                };
-            }
-            if (!entry.IsSeparator)
+                    var failures = await applicationWindows.CloseAsync(entry, lifetime.Token);
+                    if (!closed && failures > 0)
+                        ShowNotice("Impossible de demander la fermeture de certaines fenêtres. L’accès peut être refusé par Windows.");
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
+                { if (!closed) ShowNotice("Impossible de demander la fermeture de l’application.\n\n" + ex.Message); }
+                finally { interactionLocks--; lastRunningCheck = 0; }
+            };
+            launchItem = AddMenuAction(menu, isExplorer ? "Redémarrer l’Explorateur Windows…" : "Lancer à nouveau", async () =>
             {
-                Item("Lancer à nouveau", () => Launch(entry));
-                Item("Modifier / réparer…", () => EditEntry(entry));
-            }
-            Item("Retirer du dock", () =>
-            {
-                try { shortcuts.Commit(settings, settings.Entries.Where(e => e.Id != entry.Id).ToList()); RenderItems(); }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { ShowNotice(ex.Message); }
+                if (!IsCurrentEntry(entry)) return;
+                if (isExplorer) await RestartExplorerAsync();
+                else Launch(entry);
             });
+            if (isExplorer)
+            {
+                launchItem.IsEnabled = !restartingExplorer;
+            }
             menu.Items.Add(new Separator());
+            AddMenuAction(menu, "Modifier / réparer…", () => EditEntry(entry));
+            if (settings.Entries.Any(e => e.IsGroup)) menu.Items.Add(CreateMoveMenu(entry));
         }
-        if (entry is { IsSeparator: false } && settings.Entries.Any(e => e.IsGroup)) menu.Items.Add(CreateMoveMenu(entry));
-        Item("Ajouter…", () => OpenCatalog(entry?.GroupId));
-        if (entry?.GroupId is null) Item("Ajouter un séparateur", () =>
+        AddMenuAction(menu, "Retirer du dock", () =>
         {
-            var index = entry is null ? settings.Entries.Count : settings.Entries.FindIndex(e => e.Id == entry.Id) + 1;
-            var next = settings.Entries.ToList(); next.Insert(index, new(Guid.NewGuid(), "", true));
-            CommitEntries(next);
+            try { shortcuts.Commit(settings, settings.Entries.Where(e => e.Id != entry.Id).ToList()); RenderItems(); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { ShowNotice(ex.Message); }
         });
-        menu.Items.Add(new Separator());
-        if (entry?.GroupId is null) AddReverseOrderMenuItem(menu);
-        Item("Réglages…", OpenSettings);
-        Item("Quitter WinDock", Close);
         return menu;
-    }
-
-    private void AddReverseOrderMenuItem(ContextMenu menu)
-    {
-        var item = new MenuItem { Header = "Inverser l’ordre des icônes", IsCheckable = true };
-        void Refresh()
-        {
-            item.Visibility = settings.PlacementMode == DockPlacementMode.Corner ? Visibility.Visible : Visibility.Collapsed;
-            item.IsChecked = settings.ReverseIconOrder;
-        }
-        Refresh();
-        menu.Opened += (_, _) => Refresh();
-        item.Click += (_, _) =>
-        {
-            menu.IsOpen = false;
-            if (settings.PlacementMode != DockPlacementMode.Corner) return;
-            settings.ReverseIconOrder = !settings.ReverseIconOrder;
-            ApplyPositionChange();
-            Refresh();
-        };
-        menu.Items.Add(item);
     }
 
     private void ApplyPositionChange()
@@ -859,12 +886,11 @@ public sealed partial class DockWindow : Window
         panel.Children.Add(autoHideToggle);
         panel.Children.Add(new TextBlock { Text = "Sans masquage automatique, le dock reste visible sauf en plein écran.", TextWrapping = TextWrapping.Wrap, Foreground = Brushes.LightGray, Margin = new Thickness(0, 0, 0, 24) });
         var recycleToggle = new CheckBox { Content = "Afficher la corbeille", IsChecked = settings.ShowRecycleBin, Foreground = Brushes.White, Margin = new Thickness(0, 0, 0, 20) };
+        settingsRecycleToggle = recycleToggle;
         recycleToggle.SetResourceReference(StyleProperty, "SettingsSwitch");
         recycleToggle.Click += async (_, _) =>
         {
-            settings.ShowRecycleBin = recycleToggle.IsChecked == true;
-            PersistAndRender();
-            lastRecycleCheck = 0;
+            SetRecycleBinVisible(recycleToggle.IsChecked == true);
             await RefreshRecycleAsync();
         };
         panel.Children.Add(recycleToggle);
@@ -946,7 +972,7 @@ public sealed partial class DockWindow : Window
             MinWidth = Math.Min(520, maxWidth), MaxWidth = maxWidth, MinHeight = 260, MaxHeight = maxHeight,
             ResizeMode = ResizeMode.CanResize, WindowStartupLocation = WindowStartupLocation.CenterScreen, Background = new SolidColorBrush(Color.FromRgb(27, 30, 39)) };
         interactionLocks++;
-        settingsWindow.Closed += (_, _) => { if (restoreDefaultsButton == restore) restoreDefaultsButton = null; settingsWindow = null; settingsPositionPicker = null; Persist(); interactionLocks--; outsideSince = 0; };
+        settingsWindow.Closed += (_, _) => { if (restoreDefaultsButton == restore) restoreDefaultsButton = null; settingsWindow = null; settingsPositionPicker = null; settingsRecycleToggle = null; Persist(); interactionLocks--; outsideSince = 0; };
         close.Click += (_, _) => settingsWindow?.Close();
         monitorPicker.SelectionChanged += (_, _) =>
         {

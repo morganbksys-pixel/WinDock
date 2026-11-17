@@ -112,7 +112,7 @@ Après validation d’une nouvelle livraison, vous pouvez supprimer les ancienne
 - Saisir du texte dans une autre application, révéler le dock et vérifier que la saisie garde son focus.
 - Vérifier le masquage en plein écran, la temporisation et le maintien pendant les menus, les sélecteurs et les glisser-déposer.
 - Ajouter des applications et dossiers, changer l’ordre, relancer WinDock et vérifier leur conservation.
-- En mode Coin, inverser l’ordre depuis le clic droit et les réglages : vérifier les huit placements, la corbeille à l’autre extrémité, les groupes inchangés, le glisser-déposer et le retour Bord → Coin. Vérifier la synchronisation avec les réglages déjà ouverts et la navigation au clavier.
+- En mode Coin, inverser l’ordre depuis les réglages : vérifier les huit placements, la corbeille à l’autre extrémité, les groupes inchangés, le glisser-déposer et le retour Bord → Coin. Vérifier la persistance et la navigation au clavier. Vérifier les menus propres à chaque élément et l’accès aux commandes générales sur le fond du dock ; masquer la corbeille avec les réglages déjà ouverts doit synchroniser son interrupteur.
 - Supprimer ou déplacer une cible hors du dock, puis vérifier le message au lancement.
 - Lancer deux fois WinDock et vérifier qu’un seul dock demeure.
 - Vérifier le mode fixe, le masquage en plein écran et le retour automatique, avec les écrans à DPI mixtes.
@@ -120,3 +120,17 @@ Après validation d’une nouvelle livraison, vous pouvez supprimer les ancienne
 - Pour tester la corbeille, utiliser uniquement un fichier jetable créé pour cet essai : contrôler les états vide/plein et l’annulation de la confirmation Windows. Ne confirmer le vidage que si tout le contenu de la corbeille peut être supprimé. Les tests automatisés ne vident jamais la corbeille réelle.
 
 Le calcul de placement et le stockage sont dans `WinDock.Core`. L’interface et les appels Windows sont dans `WinDock`.
+
+## Identité des applications et redémarrage de l’Explorateur
+
+`ApplicationIdentityResolver` partage une résolution entre les indicateurs et les actions de fenêtres. Les métadonnées AppsFolder sont lues sur un STA et mises en cache pendant 30 secondes, y compris une résolution indisponible. Les liens classiques sont invalidés selon leur date de modification. Les applications empaquetées ne doivent jamais être associées par le seul chemin d’un hôte partagé. Le point vert correspond à un processus actif ; celui de l’Explorateur Windows est volontairement absent.
+
+Pour diagnostiquer une entrée existante sans modifier ses réglages, lancer ni fermer une application :
+
+```powershell
+dotnet run --project tests/WinDock.Tests -c Release --no-build -- --running-entry-smoke "$env:LOCALAPPDATA/WinDock/settings.json" "<GUID de l’entrée>"
+```
+
+Ce diagnostic lit directement le JSON et n’utilise pas le chargement avec récupération de SettingsStore. Il affiche le chemin résolu, l’indicateur et le nombre de fenêtres reconnues. Aucun argument de lancement ni titre de fenêtre n’est journalisé.
+
+Le redémarrage de l’Explorateur passe par `IExplorerRestarter` ; les tests doivent toujours injecter un faux service ou de fausses opérations natives. Ne jamais déclencher un redémarrage du véritable bureau pendant les tests ou les aperçus. La cible native est obtenue par GetShellWindow et revalidée avec son processus, sa session, son chemin et sa date de démarrage ; aucun arrêt par nom global ni arrêt récursif des processus enfants. La récupération du bureau se poursuit après l’arrêt même si WinDock se ferme. Le redémarrage réel, le retour de la barre des tâches et le focus sont à valider manuellement dans une session de test dédiée, après enregistrement du travail.

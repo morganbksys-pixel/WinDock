@@ -25,25 +25,25 @@ internal sealed class ApplicationWindows : IApplicationWindows
     private readonly Func<nint, ApplicationWindow?> inspect;
     private readonly Func<nint, int> postClose;
     private readonly Func<nint, bool> activate;
+    private readonly ApplicationIdentityResolver identities;
 
     internal ApplicationWindows() : this(Enumerate, Inspect, PostClose) { }
 
     internal ApplicationWindows(Func<IReadOnlyList<ApplicationWindow>> enumerate,
-        Func<nint, ApplicationWindow?> inspect, Func<nint, int> postClose, Func<nint, bool>? activate = null)
+        Func<nint, ApplicationWindow?> inspect, Func<nint, int> postClose, Func<nint, bool>? activate = null,
+        ApplicationIdentityResolver? identities = null)
     {
         this.enumerate = enumerate;
         this.inspect = inspect;
         this.postClose = postClose;
         this.activate = activate ?? Activate;
+        this.identities = identities ?? ApplicationIdentityResolver.Shared;
     }
 
-    private static Func<ApplicationWindow, bool> Matcher(DockEntry entry)
+    private Func<ApplicationWindow, bool> Matcher(DockEntry entry)
     {
-        var target = new RunningApplications().ResolveTarget(entry.Path);
-        return window => !entry.IsSeparator && !entry.IsGroup && (
-            entry.ApplicationId is { } id && string.Equals(id, window.ApplicationId, StringComparison.OrdinalIgnoreCase) ||
-            entry.SourcePath?.StartsWith("shell:AppsFolder\\", StringComparison.OrdinalIgnoreCase) != true &&
-            target is not null && RunningApplications.MatchesExecutable(target, window.Path));
+        var identity = identities.Resolve(entry);
+        return window => identity.Matches(window.Path, window.ApplicationId);
     }
 
     public Task<IReadOnlyList<ApplicationWindow>> ListAsync(DockEntry entry, CancellationToken token) =>
@@ -100,7 +100,7 @@ internal sealed class ApplicationWindows : IApplicationWindows
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(nint window, StringBuilder title, int size);
 
     private delegate bool WindowCallback(nint window, nint data);
-    [DllImport("user32.dll")] private static extern bool EnumWindows(WindowCallback callback, nint data);
+    [DllImport("user32.dll", SetLastError = true)] private static extern bool EnumWindows(WindowCallback callback, nint data);
     [DllImport("user32.dll")] private static extern bool EnumChildWindows(nint parent, WindowCallback callback, nint data);
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(nint window);
     [DllImport("user32.dll")] private static extern nint GetWindow(nint window, uint command);

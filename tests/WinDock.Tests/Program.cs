@@ -47,6 +47,19 @@ internal static partial class Program
             Console.WriteLine($"Running: {running}; recognized windows: {windows}. Read-only check; no close request sent.");
             return running && windows > 0 ? 0 : 1;
         }
+        if (args.Length == 3 && args[0] == "--running-entry-smoke")
+        {
+            // Parse directly: SettingsStore.Load can create backups, which a read-only diagnostic must never do.
+            var settings = System.Text.Json.JsonSerializer.Deserialize<DockSettings>(File.ReadAllText(args[1]),
+                new System.Text.Json.JsonSerializerOptions { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } })
+                ?? throw new InvalidOperationException("Réglages introuvables.");
+            var entry = settings.Entries.Single(e => e.Id == Guid.Parse(args[2]));
+            var identity = StaWorker.RunAsync(_ => ApplicationIdentityResolver.Shared.Resolve(entry), default).GetAwaiter().GetResult();
+            var running = StaWorker.RunAsync(_ => new RunningApplications().Snapshot([entry]).Contains(entry.Id), default).GetAwaiter().GetResult();
+            var windows = new ApplicationWindows().CountAsync(entry, default).GetAwaiter().GetResult();
+            Console.WriteLine($"Application: {entry.DisplayName}; executable: {identity.Executable}; green indicator: {running}; recognized windows: {windows}. Read-only; no launch, activation or close request sent.");
+            return identity.IsExplorer || running ? 0 : 1;
+        }
         if (args.Length == 2 && args[0] == "--hold")
         {
             File.WriteAllText(args[1], "ready");
@@ -74,6 +87,8 @@ internal static partial class Program
                 Console.WriteLine($"{passed} background test groups passed; no windows shown or activated. Interactive tests not run.");
                 return 0;
             }
+            RunApplicationIdentityTests(temporary);
+            RunExplorerRestartCoreTests();
             Run("Versioned Squirrel applications share indicator and window identity without matching unrelated executables", () =>
             {
                 var root = Path.Combine(temporary, "AnthropicClaude");
@@ -641,7 +656,7 @@ internal static partial class Program
                     {
                         var entry = (DockEntry)button.Tag;
                         var actions = entry.IsSeparator ? new[] { "Retirer du dock" } : new[] { "Lancer à nouveau", "Modifier / réparer…", "Retirer du dock" };
-                        Check(button.ContextMenu.Items.OfType<MenuItem>().Where(item => item.Visibility == Visibility.Visible).Select(item => (string)item.Header).SequenceEqual(actions.Concat(commonActions)));
+                        Check(button.ContextMenu.Items.OfType<MenuItem>().Where(item => item.Visibility == Visibility.Visible).Select(item => (string)item.Header).SequenceEqual(actions));
                         var bounds = button.TransformToAncestor(frame).TransformBounds(new Rect(button.RenderSize));
                         if (!(bounds.Left >= 8 && bounds.Top >= 8 && bounds.Right <= frame.ActualWidth - 8 && bounds.Bottom <= frame.ActualHeight - 8))
                             throw new InvalidOperationException($"Clipped button: {edge}, {count} entries, bounds {bounds}, frame {frame.ActualWidth} x {frame.ActualHeight}");
@@ -655,6 +670,8 @@ internal static partial class Program
             });
             RunCornerWindowTests(temporary, args);
             RunMenuBackgroundTests();
+            RunContextualMenuTests(temporary, args);
+            RunExplorerRestartWindowTests(temporary, args);
             Run("Settings restoration previews the exact selection and supports cancellation and confirmation", () =>
             {
                 var root = Path.Combine(temporary, "defaults-ui"); var sources = CreateDefaultSources(root);
@@ -1135,8 +1152,8 @@ internal static partial class Program
                     button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     PumpUntil(() => fake.Opens == 1 && fake.Reads >= 6);
                     var menuItems = button.ContextMenu.Items.OfType<MenuItem>().Where(item => item.Visibility == Visibility.Visible).ToArray();
-                    Check(menuItems.Select(i => (string)i.Header).SequenceEqual(new[] { "Ouvrir", "Vider la corbeille…", "Ajouter…", "Ajouter un séparateur", "Réglages…", "Quitter WinDock" }));
-                    menuItems[1].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    Check(menuItems.Select(i => (string)i.Header).SequenceEqual(new[] { "Vider la corbeille…", "Masquer du dock" }));
+                    menuItems[0].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                     PumpUntil(() => fake.Empties == 1 && Label() == "Corbeille vide");
                     Check(settings.Entries.Count == 2);
                     settings.ShowRecycleBin = false;
@@ -1361,7 +1378,8 @@ internal static partial class Program
                         PumpUntil(HasClose);
                         Check(Equals(((MenuItem)menu.Items[0]).Header, count == 1 ? "Fermer l’application" : "Fermer toutes les fenêtres"));
                         Check(Equals(((MenuItem)menu.Items[1]).Header, "Lancer à nouveau"));
-                        Check(Equals(((MenuItem)menu.Items[2]).Header, "Modifier / réparer…"));
+                        Check(menu.Items[2] is Separator);
+                        Check(Equals(((MenuItem)menu.Items[3]).Header, "Modifier / réparer…"));
                     }
                     if (args.Length == 2 && args[0] == "--preview")
                     {
@@ -1748,6 +1766,9 @@ internal static partial class Program
                     {
                         var refresh = (Task)typeof(DockWindow).GetMethod("RefreshRecycleAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.Invoke(window, null)!;
                         PumpUntil(() => refresh.IsCompleted); refresh.GetAwaiter().GetResult();
+                        PumpUntil(() => !(bool)typeof(DockWindow).GetField("checkingRunning", PrivateInstance)!.GetValue(window)!);
+                        var runningRefresh = (Task)typeof(DockWindow).GetMethod("RefreshRunningAsync", PrivateInstance)!.Invoke(window, null)!;
+                        PumpUntil(() => runningRefresh.IsCompleted); runningRefresh.GetAwaiter().GetResult();
                         window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
                         SavePreview(window, Path.Combine(args[1], "default-dock.png"));
                         Console.WriteLine("Default preview entries: " + string.Join(", ", settings.Entries.Where(e => !e.IsSeparator).Select(ManagedShortcuts.Name)));
@@ -1937,6 +1958,7 @@ internal static partial class Program
         internal bool ThrowOnRead;
         internal ImageSource? Icon;
         internal int Reads, Opens, Empties, MaximumConcurrentReads;
+        internal ManualResetEventSlim? EmptyRelease;
         private int concurrentReads;
         public RecycleBinSnapshot Read()
         {
@@ -1953,7 +1975,7 @@ internal static partial class Program
             finally { Interlocked.Decrement(ref concurrentReads); }
         }
         public void Open() => Interlocked.Increment(ref Opens);
-        public void Empty(nint owner) { EmptyState = true; Interlocked.Increment(ref Empties); }
+        public void Empty(nint owner) { Interlocked.Increment(ref Empties); EmptyRelease?.Wait(); EmptyState = true; }
     }
     private static void PumpUntil(Func<bool> condition, int timeoutMilliseconds = 5000)
     {
