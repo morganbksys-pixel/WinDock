@@ -112,6 +112,7 @@ Après validation d’une nouvelle livraison, vous pouvez supprimer les ancienne
 - Saisir du texte dans une autre application, révéler le dock et vérifier que la saisie garde son focus.
 - Vérifier le masquage en plein écran, la temporisation et le maintien pendant les menus, les sélecteurs et les glisser-déposer.
 - Ajouter des applications et dossiers, changer l’ordre, relancer WinDock et vérifier leur conservation.
+- En mode Coin, inverser l’ordre depuis le clic droit et les réglages : vérifier les huit placements, la corbeille à l’autre extrémité, les groupes inchangés, le glisser-déposer et le retour Bord → Coin. Vérifier la synchronisation avec les réglages déjà ouverts et la navigation au clavier.
 - Supprimer ou déplacer une cible hors du dock, puis vérifier le message au lancement.
 - Lancer deux fois WinDock et vérifier qu’un seul dock demeure.
 - Vérifier le mode fixe, le masquage en plein écran et le retour automatique, avec les écrans à DPI mixtes.

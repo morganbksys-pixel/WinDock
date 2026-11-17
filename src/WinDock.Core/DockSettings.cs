@@ -27,11 +27,13 @@ public sealed class DockSettings
     public DockCorner Corner { get; set; } = DockCorner.BottomRight;
     /// <summary>Direction of the dock's main axis in corner mode.</summary>
     public DockOrientation Orientation { get; set; } = DockOrientation.Horizontal;
+    /// <summary>Reverses the entire root icon row in corner mode, retaining the stored entry order.</summary>
+    public bool ReverseIconOrder { get; set; }
     /// <summary>Restricts corner activation to its outermost two physical pixels on both axes.</summary>
     public bool RequireExactCorner { get; set; }
     /// <summary>Resolved layout, independent of WPF and desktop coordinates.</summary>
     [JsonIgnore]
-    public DockLayout Layout => new(PlacementMode, Edge, Corner, Orientation);
+    public DockLayout Layout => new(PlacementMode, Edge, Corner, Orientation, ReverseIconOrder);
     public string? MonitorDevice { get; set; }
     /// <summary>Background opacity from 0.1 to 1; icons remain fully opaque.</summary>
     public double BackgroundOpacity { get; set; } = 238.0 / 255;

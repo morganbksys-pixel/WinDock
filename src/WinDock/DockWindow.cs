@@ -30,6 +30,7 @@ public sealed partial class DockWindow : Window
     private Point dragStart;
     private Guid? pressedEntry;
     private Window? settingsWindow;
+    private DockPositionPicker? settingsPositionPicker;
     private IndicatorWindow? indicator;
     private PixelRect indicatorArea;
     private DockLayout? placedLayout;
@@ -406,9 +407,42 @@ public sealed partial class DockWindow : Window
             CommitEntries(next);
         });
         menu.Items.Add(new Separator());
+        if (entry?.GroupId is null) AddReverseOrderMenuItem(menu);
         Item("Réglages…", OpenSettings);
         Item("Quitter WinDock", Close);
         return menu;
+    }
+
+    private void AddReverseOrderMenuItem(ContextMenu menu)
+    {
+        var item = new MenuItem { Header = "Inverser l’ordre des icônes", IsCheckable = true };
+        void Refresh()
+        {
+            item.Visibility = settings.PlacementMode == DockPlacementMode.Corner ? Visibility.Visible : Visibility.Collapsed;
+            item.IsChecked = settings.ReverseIconOrder;
+        }
+        Refresh();
+        menu.Opened += (_, _) => Refresh();
+        item.Click += (_, _) =>
+        {
+            menu.IsOpen = false;
+            if (settings.PlacementMode != DockPlacementMode.Corner) return;
+            settings.ReverseIconOrder = !settings.ReverseIconOrder;
+            ApplyPositionChange();
+            Refresh();
+        };
+        menu.Items.Add(item);
+    }
+
+    private void ApplyPositionChange()
+    {
+        if (activeMenu is not null) activeMenu.IsOpen = false;
+        CloseGroup();
+        ClearDropFeedback();
+        triggerSince = outsideSince = 0;
+        settingsPositionPicker?.Refresh();
+        PersistAndRender();
+        SetRevealed(display is null || !Native.FullScreen(display, hwnd));
     }
 
     private void ConfigureMenu(ContextMenu menu)
@@ -803,13 +837,8 @@ public sealed partial class DockWindow : Window
         if (settingsWindow is not null) { BringSettingsForward(settingsWindow); return; }
         var view = new DockSettingsView();
         var panel = view.PositionPanel;
-        var positionPicker = new DockPositionPicker(settings, () =>
-        {
-            CloseGroup();
-            triggerSince = outsideSince = 0;
-            PersistAndRender();
-            SetRevealed(display is null || !Native.FullScreen(display, hwnd));
-        });
+        var positionPicker = new DockPositionPicker(settings, ApplyPositionChange);
+        settingsPositionPicker = positionPicker;
         panel.Children.Add(positionPicker);
         panel.Children.Add(new TextBlock { Text = "Écran", Foreground = Brushes.LightGray });
         var displays = Native.Displays();
@@ -917,7 +946,7 @@ public sealed partial class DockWindow : Window
             MinWidth = Math.Min(520, maxWidth), MaxWidth = maxWidth, MinHeight = 260, MaxHeight = maxHeight,
             ResizeMode = ResizeMode.CanResize, WindowStartupLocation = WindowStartupLocation.CenterScreen, Background = new SolidColorBrush(Color.FromRgb(27, 30, 39)) };
         interactionLocks++;
-        settingsWindow.Closed += (_, _) => { if (restoreDefaultsButton == restore) restoreDefaultsButton = null; settingsWindow = null; Persist(); interactionLocks--; outsideSince = 0; };
+        settingsWindow.Closed += (_, _) => { if (restoreDefaultsButton == restore) restoreDefaultsButton = null; settingsWindow = null; settingsPositionPicker = null; Persist(); interactionLocks--; outsideSince = 0; };
         close.Click += (_, _) => settingsWindow?.Close();
         monitorPicker.SelectionChanged += (_, _) =>
         {

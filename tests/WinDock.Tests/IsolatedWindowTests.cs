@@ -88,8 +88,43 @@ internal static partial class Program
                         view.AppearancePanel.Children.OfType<Slider>().Single().Value = 58;
                         view.SelectPage("Emplacement"); dialog.UpdateLayout();
                         var picker = view.PositionPanel.Children.OfType<DockPositionPicker>().Single();
-                        var exact = VisualChildren(picker).OfType<CheckBox>().Single();
+                        var exact = VisualChildren(picker).OfType<CheckBox>().Single(c => System.Windows.Automation.AutomationProperties.GetName(c) == "Exiger le coin exact");
                         Check(exact.IsEnabled); exact.IsChecked = true;
+                        var reverse = VisualChildren(picker).OfType<CheckBox>().Single(c => System.Windows.Automation.AutomationProperties.GetName(c) == ReverseOrderLabel);
+                        reverse.IsChecked = true;
+                        Check(settings.ReverseIconOrder);
+                        ReverseOrderItem(window.ContextMenu).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                        Check(!settings.ReverseIconOrder && reverse.IsChecked == false && !dialog.Topmost);
+                        reverse.IsChecked = true;
+                        window.UpdateLayout();
+                        window.ToggleGroup(group);
+                        var reversedGroup = (GroupPanel)typeof(DockWindow).GetField("groupPanel", PrivateInstance)!.GetValue(window)!;
+                        Check(reversedGroup.Items.Children.OfType<Button>().Select(b => ((DockEntry)b.Tag).Id)
+                            .SequenceEqual(settings.Entries.Where(e => e.GroupId == group.Id).Select(e => e.Id)));
+                        var groupButton = panel.Children.OfType<Button>().Single(b => b.Tag is DockEntry e && e.Id == group.Id);
+                        ReverseOrderItem(groupButton.ContextMenu).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                        Check(!settings.ReverseIconOrder && reverse.IsChecked == false && !reversedGroup.IsVisible);
+                        reverse.IsChecked = true;
+                        var dockMenu = window.ContextMenu;
+                        dockMenu.PlacementTarget = window; dockMenu.IsOpen = true;
+                        PumpUntil(() => PresentationSource.FromVisual(dockMenu) is HwndSource);
+                        var reverseCommand = ReverseOrderItem(dockMenu);
+                        Check(reverseCommand.Visibility == Visibility.Visible && reverseCommand.IsChecked);
+                        var reversedPopup = ((HwndSource)PresentationSource.FromVisual(dockMenu)).Handle;
+                        typeof(DockWindow).GetMethod("RefreshPlacement", PrivateInstance)!.Invoke(window, null);
+                        Check(dockMenu.IsOpen && IsAbove(reversedPopup, hwnd));
+                        SavePreview(dockMenu, Path.Combine(output, "corner-menu-reversed.png"));
+                        reverseCommand.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                        Check(!dockMenu.IsOpen && !settings.ReverseIconOrder && reverse.IsChecked == false);
+                        reverse.IsChecked = true;
+                        var modeButtons = VisualChildren(picker).OfType<RadioButton>().ToArray();
+                        modeButtons.Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Bord").IsChecked = true;
+                        dockMenu.IsOpen = true;
+                        PumpUntil(() => PresentationSource.FromVisual(dockMenu) is HwndSource);
+                        Check(reverseCommand.Visibility == Visibility.Collapsed && settings.ReverseIconOrder);
+                        dockMenu.IsOpen = false;
+                        modeButtons.Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Coin").IsChecked = true;
+                        Check(reverse.IsChecked == true && settings.Layout.ReverseIconOrder);
                         Check(settings.RequireExactCorner && settings.AutoHide && settings.ShowRecycleBin && settings.BackgroundOpacity == 0.58);
                         SavePreview(dialog, Path.Combine(output, "settings-Emplacement.png"));
                         var oldHeight = dialog.Height;
@@ -105,7 +140,7 @@ internal static partial class Program
                         dialog.Height = oldHeight; view.SelectPage("Emplacement"); dialog.UpdateLayout();
                         dialog.Close();
                         var restored = new SettingsStore(Path.Combine(temporary, "isolated.json")).Load(out var warning);
-                        Check(warning is null && restored.RequireExactCorner && restored.AutoHide && restored.ShowRecycleBin && restored.BackgroundOpacity == 0.58);
+                        Check(warning is null && restored.RequireExactCorner && restored.AutoHide && restored.ShowRecycleBin && restored.BackgroundOpacity == 0.58 && restored.ReverseIconOrder);
                         Console.WriteLine("SETTINGS PASS: three pages, live switches, opacity, exact-corner persistence and fixed footer at 300 DIP height.");
                     }
                 }

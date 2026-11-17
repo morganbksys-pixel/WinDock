@@ -21,6 +21,7 @@ internal sealed class DockPositionPicker : StackPanel
     private readonly Grid orientations = new();
     private readonly List<RadioButton> orientationButtons = [];
     private CheckBox exactCorner = null!;
+    private CheckBox reverseOrder = null!;
 
     internal DockPositionPicker(DockSettings settings, Action changed)
     {
@@ -89,6 +90,25 @@ internal sealed class DockPositionPicker : StackPanel
             button.Checked += (_, _) => { settings.Orientation = orientation; UpdatePreview(); changed(); };
         }
         orientationPanel.Children.Add(orientations);
+        reverseOrder = new CheckBox
+        {
+            Content = new TextBlock { Text = "Inverser l’ordre des icônes", TextWrapping = TextWrapping.Wrap },
+            IsChecked = settings.ReverseIconOrder, Foreground = Brushes.White, Margin = new Thickness(0, 14, 0, 0),
+            ToolTip = "Inverse aussi les séparateurs, les tuiles de groupes et la corbeille."
+        };
+        AutomationProperties.SetName(reverseOrder, "Inverser l’ordre des icônes");
+        reverseOrder.SetResourceReference(StyleProperty, "SettingsSwitch");
+        void ReverseOrderChanged(object sender, RoutedEventArgs e)
+        {
+            var reversed = reverseOrder.IsChecked == true;
+            if (settings.ReverseIconOrder == reversed) return;
+            settings.ReverseIconOrder = reversed;
+            UpdatePreview();
+            changed();
+        }
+        reverseOrder.Checked += ReverseOrderChanged;
+        reverseOrder.Unchecked += ReverseOrderChanged;
+        orientationPanel.Children.Add(reverseOrder);
         exactCorner = new CheckBox
         {
             Content = new TextBlock { Text = "Exiger le coin exact", TextWrapping = TextWrapping.Wrap },
@@ -138,6 +158,7 @@ internal sealed class DockPositionPicker : StackPanel
         foreach (var (button, _) in edgeButtons) button.Visibility = cornerMode ? Visibility.Collapsed : Visibility.Visible;
         foreach (var (button, _) in cornerButtons) button.Visibility = cornerMode ? Visibility.Visible : Visibility.Collapsed;
         orientationPanel.Visibility = cornerMode ? Visibility.Visible : Visibility.Collapsed;
+        reverseOrder.IsChecked = settings.ReverseIconOrder;
         exactCorner.IsEnabled = settings.AutoHide;
         var layout = settings.Layout;
         var edge = layout.EffectiveEdge;
@@ -162,8 +183,9 @@ internal sealed class DockPositionPicker : StackPanel
             DockCorner.TopLeft => "Haut gauche", DockCorner.TopRight => "Haut droite",
             DockCorner.BottomLeft => "Bas gauche", _ => "Bas droite"
         } : edge switch { DockEdge.Top => "Haut", DockEdge.Bottom => "Bas", DockEdge.Left => "Gauche", _ => "Droite" };
-        var direction = horizontal ? layout.Reversed ? "Vers la gauche" : "Vers la droite" : layout.Reversed ? "Vers le haut" : "Vers le bas";
+        var direction = horizontal ? layout.Right ? "Vers la gauche" : "Vers la droite" : layout.Bottom ? "Vers le haut" : "Vers le bas";
         summary.Text = cornerMode ? $"{position} · {(horizontal ? "Horizontal" : "Vertical")} · {direction}\n" +
+            (settings.ReverseIconOrder ? "Ordre inversé\n" : "Ordre normal\n") +
             (!settings.AutoHide ? "Dock toujours visible, sauf en plein écran." : settings.RequireExactCorner ? "Placez la souris tout au bout du coin pendant 300 ms." : "Survolez le repère du coin pendant 300 ms.")
             : $"Bord {position.ToLowerInvariant()} · Dock centré";
     }

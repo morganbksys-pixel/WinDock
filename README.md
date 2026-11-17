@@ -30,6 +30,8 @@ En mode **Coin**, un petit repère en L arrondi marque le coin physique choisi. 
 
 Près des boutons de fenêtre, activez **Réglages → Emplacement → Coin → Exiger le coin exact** : seule l’extrémité du coin révèle le dock, après les mêmes 300 ms. Survoler le reste du repère ne l’ouvre plus.
 
+Pour retourner la rangée en mode **Coin**, choisissez **Clic droit → Inverser l’ordre des icônes**, ou activez le même interrupteur dans **Réglages → Emplacement → Coin**. Les séparateurs, les tuiles de groupes et la corbeille changent aussi de côté ; l’intérieur des groupes garde son ordre. Ce choix est mémorisé pour tous les coins et orientations, sans modifier l’ordre du mode Bord.
+
 Les réglages sont répartis en trois onglets : **Emplacement** pour l’écran, les bords et les coins ; **Apparence** pour le masquage, la corbeille et l’opacité ; **Général** pour le démarrage et la restauration du dock. La fenêtre est redimensionnable, avec un bouton Terminer toujours accessible.
 
 [Aperçu des nouveaux réglages](docs/images/settings.png)

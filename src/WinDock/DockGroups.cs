@@ -148,6 +148,7 @@ public sealed partial class DockWindow
         Add("Ajouter…", () => OpenCatalog(group.Id));
         Add("Renommer…", () => RenameGroup(group));
         Add("Dissoudre le groupe", () => { CloseGroup(); CommitEntries(EntryRules.Dissolve(settings.Entries, group.Id)); });
+        AddReverseOrderMenuItem(menu);
         return menu;
     }
 

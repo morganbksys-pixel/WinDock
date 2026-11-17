@@ -636,12 +636,12 @@ internal static partial class Program
                     Check(buttons.Length == count);
                     if (count == 0) Check(panel.Children.OfType<TextBlock>().Single().Text == "Clic droit pour ajouter" && window.AllowDrop);
                     var commonActions = new[] { "Ajouter…", "Ajouter un séparateur", "Réglages…", "Quitter WinDock" };
-                    Check(window.ContextMenu.Items.OfType<MenuItem>().Select(item => (string)item.Header).SequenceEqual(commonActions));
+                    Check(window.ContextMenu.Items.OfType<MenuItem>().Where(item => item.Visibility == Visibility.Visible).Select(item => (string)item.Header).SequenceEqual(commonActions));
                     foreach (var button in buttons)
                     {
                         var entry = (DockEntry)button.Tag;
                         var actions = entry.IsSeparator ? new[] { "Retirer du dock" } : new[] { "Lancer à nouveau", "Modifier / réparer…", "Retirer du dock" };
-                        Check(button.ContextMenu.Items.OfType<MenuItem>().Select(item => (string)item.Header).SequenceEqual(actions.Concat(commonActions)));
+                        Check(button.ContextMenu.Items.OfType<MenuItem>().Where(item => item.Visibility == Visibility.Visible).Select(item => (string)item.Header).SequenceEqual(actions.Concat(commonActions)));
                         var bounds = button.TransformToAncestor(frame).TransformBounds(new Rect(button.RenderSize));
                         if (!(bounds.Left >= 8 && bounds.Top >= 8 && bounds.Right <= frame.ActualWidth - 8 && bounds.Bottom <= frame.ActualHeight - 8))
                             throw new InvalidOperationException($"Clipped button: {edge}, {count} entries, bounds {bounds}, frame {frame.ActualWidth} x {frame.ActualHeight}");
@@ -1134,7 +1134,7 @@ internal static partial class Program
                     fake.ThrowOnRead = false;
                     button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     PumpUntil(() => fake.Opens == 1 && fake.Reads >= 6);
-                    var menuItems = button.ContextMenu.Items.OfType<MenuItem>().ToArray();
+                    var menuItems = button.ContextMenu.Items.OfType<MenuItem>().Where(item => item.Visibility == Visibility.Visible).ToArray();
                     Check(menuItems.Select(i => (string)i.Header).SequenceEqual(new[] { "Ouvrir", "Vider la corbeille…", "Ajouter…", "Ajouter un séparateur", "Réglages…", "Quitter WinDock" }));
                     menuItems[1].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                     PumpUntil(() => fake.Empties == 1 && Label() == "Corbeille vide");

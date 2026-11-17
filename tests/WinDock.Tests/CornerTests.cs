@@ -27,6 +27,7 @@ internal static partial class Program
 
     private static void RunCornerCoreTests(string temporary)
     {
+        RunReverseIconOrderCoreTests(temporary);
         RunExactCornerTests(temporary);
         Run("Corner settings retain legacy edges and round trip all eight layouts without changing entries", () =>
         {
@@ -95,6 +96,7 @@ internal static partial class Program
 
     private static void RunCornerWindowTests(string temporary, string[] args)
     {
+        RunReverseIconOrderWindowTests(temporary);
         Run("Corner dwell cancels on departure and preserves fixed, fullscreen and hide delays", () =>
         {
             var settings = new DockSettings { PlacementMode = DockPlacementMode.Corner };
@@ -210,9 +212,19 @@ internal static partial class Program
                 Check(warning is null && restored.Layout == settings.Layout);
                 Check(VisualChildren(picker).OfType<TextBlock>().Any(t => t.Text.Contains("Haut gauche · Vertical · Vers le bas")));
                 Check(Choice("Coin haut gauche").Focusable && Choice("Vertical").Focusable);
+                var reverse = VisualChildren(picker).OfType<CheckBox>().Single(c => AutomationProperties.GetName(c) == "Inverser l’ordre des icônes");
+                reverse.IsChecked = true;
+                Check(settings.ReverseIconOrder && store.Load(out _).ReverseIconOrder);
+                Check(VisualChildren(picker).OfType<TextBlock>().Any(t => t.Text.Contains("Vers le bas\nOrdre inversé")));
+                var reverseMenu = ReverseOrderItem(window.ContextMenu);
+                reverseMenu.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Check(!settings.ReverseIconOrder && reverse.IsChecked == false && !store.Load(out _).ReverseIconOrder);
+                reverse.IsChecked = true;
                 if (args.Length == 2 && args[0] == "--preview") SavePreview(dialog, Path.Combine(args[1], "corner-settings.png"));
                 Choice("Bord").IsChecked = true;
-                Check(settings.Layout.EffectiveEdge == DockEdge.Left && settings.Orientation == DockOrientation.Vertical && settings.Corner == DockCorner.TopLeft);
+                Check(settings.Layout.EffectiveEdge == DockEdge.Left && settings.Orientation == DockOrientation.Vertical && settings.Corner == DockCorner.TopLeft && settings.ReverseIconOrder);
+                Choice("Coin").IsChecked = true;
+                Check(reverse.IsChecked == true && settings.Layout.Reversed);
                 dialog.Close();
             }
             finally { window.Close(); }
@@ -266,6 +278,12 @@ internal static partial class Program
                     {
                         surface.Measure(new Size(600, 600)); surface.Arrange(new Rect(new Point(), surface.DesiredSize)); surface.UpdateLayout();
                         SavePreview(surface, Path.Combine(previews, $"corner-{layout.Corner}-{layout.Orientation}.png"));
+                        settings.ReverseIconOrder = true;
+                        typeof(DockWindow).GetMethod("RenderItems", PrivateInstance)!.Invoke(window, null);
+                        surface.Measure(new Size(600, 600)); surface.Arrange(new Rect(new Point(), surface.DesiredSize)); surface.UpdateLayout();
+                        SavePreview(surface, Path.Combine(previews, $"corner-{layout.Corner}-{layout.Orientation}-reversed.png"));
+                        settings.ReverseIconOrder = false;
+                        typeof(DockWindow).GetMethod("RenderItems", PrivateInstance)!.Invoke(window, null);
                     }
                     if (count == 8)
                     {
@@ -313,7 +331,14 @@ internal static partial class Program
                     label.Measure(new Size(label.ActualWidth, double.PositiveInfinity));
                     Check(label.DesiredSize.Height <= label.ActualHeight + 1);
                 }
-                if (previews is not null) SavePreview(picker, Path.Combine(previews, $"corner-settings-{layout.Corner}-{layout.Orientation}.png"));
+                if (previews is not null)
+                {
+                    SavePreview(picker, Path.Combine(previews, $"corner-settings-{layout.Corner}-{layout.Orientation}.png"));
+                    var reverse = VisualChildren(picker).OfType<CheckBox>().Single(c => AutomationProperties.GetName(c) == ReverseOrderLabel);
+                    reverse.IsChecked = true; Arrange();
+                    SavePreview(picker, Path.Combine(previews, $"corner-settings-{layout.Corner}-{layout.Orientation}-reversed.png"));
+                    reverse.IsChecked = false; Arrange();
+                }
             }
             Choice("Bord").IsChecked = true; Arrange();
             Check(settings.Edge == DockEdge.Left && settings.Corner == DockCorner.BottomRight && settings.Orientation == DockOrientation.Vertical && settings.RequireExactCorner && changes > 8);

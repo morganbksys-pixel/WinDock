@@ -12,7 +12,8 @@ public enum DockOrientation { Horizontal, Vertical }
 /// <param name="Edge">Retained edge-mode position.</param>
 /// <param name="Corner">Corner-mode position.</param>
 /// <param name="Orientation">Corner-mode main axis.</param>
-public readonly record struct DockLayout(DockPlacementMode Mode, DockEdge Edge, DockCorner Corner, DockOrientation Orientation)
+/// <param name="ReverseIconOrder">Whether to reverse the root icon row in corner mode.</param>
+public readonly record struct DockLayout(DockPlacementMode Mode, DockEdge Edge, DockCorner Corner, DockOrientation Orientation, bool ReverseIconOrder = false)
 {
     /// <summary>Whether the main axis runs horizontally.</summary>
     public bool Horizontal => Mode == DockPlacementMode.Corner
@@ -22,7 +23,7 @@ public readonly record struct DockLayout(DockPlacementMode Mode, DockEdge Edge, 
     /// <summary>Whether the corner is at the bottom of the monitor.</summary>
     public bool Bottom => Corner is DockCorner.BottomLeft or DockCorner.BottomRight;
     /// <summary>Whether physical item order is the reverse of stored order.</summary>
-    public bool Reversed => Mode == DockPlacementMode.Corner && (Horizontal ? Right : Bottom);
+    public bool Reversed => Mode == DockPlacementMode.Corner && ((Horizontal ? Right : Bottom) ^ ReverseIconOrder);
     /// <summary>Edge whose inward normal determines popup placement.</summary>
     public DockEdge EffectiveEdge => Mode == DockPlacementMode.Edge ? Edge
         : Horizontal ? Bottom ? DockEdge.Bottom : DockEdge.Top
