@@ -4,9 +4,10 @@ Vos applications et dossiers favoris, à portée de clic dans un dock discret po
 
 ![Aperçu du dock par défaut avec navigateur, messagerie, dossiers et corbeille Windows](docs/images/dock.png)
 
-**[Télécharger WinDock](https://github.com/morganbksys-pixel/WinDock/releases/latest)**
+**[Télécharger WinDock 0.0.12](https://github.com/morganbksys-pixel/WinDock/releases/tag/v0.0.12)**
 
-Pour commencer, choisissez **WinDock.exe**, l’EXE autonome prêt à lancer. Vous préférez une archive ? Le **ZIP portable** est disponible sur la même page : décompressez-le et gardez tous ses fichiers ensemble.
+- **[EXE autonome — WinDock.exe](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.12/WinDock.exe)** : prêt à lancer depuis un dossier permanent, avec le runtime .NET inclus.
+- **[ZIP portable — WinDock-0.0.12-win-x64.zip](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.12/WinDock-0.0.12-win-x64.zip)** : décompressez-le et gardez tous ses fichiers ensemble.
 
 ## Vos raccourcis, à votre façon
 
