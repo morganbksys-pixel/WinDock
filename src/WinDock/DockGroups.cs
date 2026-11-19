@@ -55,6 +55,7 @@ public sealed partial class DockWindow
             button.Content = new Grid { Width = 48, Height = 48, Children = { iconContent, badge } };
             runningIndicators[entry.Id] = badge;
         }
+        AttachMenu(button);
         AttachLabel(button, entry.IsSeparator ? "Séparateur — glisser pour déplacer" : ManagedShortcuts.Name(entry));
         if (entry.IsGroup) button.Click += (_, _) => ToggleGroup(entry);
         else if (!entry.IsSeparator) button.Click += async (_, _) => await OpenEntryAsync(entry, button);
@@ -139,10 +140,11 @@ public sealed partial class DockWindow
 
     private ContextMenu CreateGroupMenu(DockEntry group)
     {
-        var menu = new ContextMenu { StaysOpen = false }; ConfigureMenu(menu);
-        AddMenuAction(menu, "Ajouter…", () => OpenCatalog(group.Id));
-        AddMenuAction(menu, "Renommer…", () => RenameGroup(group));
-        AddMenuAction(menu, "Dissoudre le groupe", () => { CloseGroup(); CommitEntries(EntryRules.Dissolve(settings.Entries, group.Id)); });
+        var menu = NewMenu(DockMenuPreferences.Group);
+        AddConfigured(menu, DockMenuPreferences.AddApplication, () => OpenCatalog(group.Id));
+        AddConfigured(menu, DockMenuPreferences.Rename, () => RenameGroup(group));
+        AddConfigured(menu, DockMenuPreferences.Dissolve, () => { CloseGroup(); CommitEntries(EntryRules.Dissolve(settings.Entries, group.Id)); });
+        RefreshMenuChoices(menu);
         return menu;
     }
 

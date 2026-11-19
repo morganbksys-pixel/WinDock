@@ -2,6 +2,8 @@
 
 Vos applications et dossiers favoris, à portée de clic dans un dock discret pour Windows.
 
+**[Tester la bêta 0.0.15 — ZIP portable Windows x64](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.15/WinDock-0.0.15-win-x64.zip)**. Quittez l’ancienne instance, décompressez le ZIP dans un nouveau dossier et lancez `WinDock.exe`.
+
 ![Aperçu du dock par défaut avec navigateur, messagerie, dossiers et corbeille Windows](docs/images/dock.png)
 
 **[Télécharger WinDock 0.0.12](https://github.com/morganbksys-pixel/WinDock/releases/tag/v0.0.12)**
@@ -24,8 +26,10 @@ Au premier lancement, WinDock prépare l’Explorateur, votre navigateur, votre 
 ## Démarrer en trois étapes
 
 1. **Téléchargez et lancez** `WinDock.exe` depuis un dossier permanent.
-2. **Ajoutez vos applications** avec **Clic droit sur le fond du dock → Ajouter…**, ou glissez vos raccourcis sur le dock.
-3. **Personnalisez-le** avec **Clic droit sur le fond du dock → Réglages** : bord ou coin, orientation, écran, opacité, masquage automatique et corbeille.
+2. **Ajoutez vos applications** avec **Clic droit sur le fond du dock → Ajouter une application…**, ou glissez vos raccourcis sur le dock.
+3. **Personnalisez-le** avec le bouton engrenage **Réglages** dans le dock : bord ou coin, orientation, écran, opacité, masquage automatique et corbeille.
+
+Même quand le dock est masqué, **Ctrl + Alt + D** bascule le masquage automatique et **Ctrl + Alt + P** ouvre les réglages. Les deux combinaisons peuvent être modifiées ou désactivées dans **Réglages → Clavier**.
 
 En mode **Coin**, un petit repère en L arrondi marque le coin physique choisi. Survolez-le pendant **300 ms** pour retrouver le dock ; sa première icône reste près du coin et les suivantes se déploient vers l’intérieur. Le dock ouvert évite la barre des tâches, et le passage entre le repère et les icônes le maintient visible. Les placements existants sont conservés lors d’une mise à jour.
 
@@ -33,7 +37,7 @@ Près des boutons de fenêtre, activez **Réglages → Emplacement → Coin → 
 
 Pour retourner la rangée en mode **Coin**, activez **Réglages → Emplacement → Coin → Inverser l’ordre des icônes**. Les séparateurs, les tuiles de groupes et la corbeille changent aussi de côté ; l’intérieur des groupes garde son ordre. Ce choix est mémorisé pour tous les coins et orientations, sans modifier l’ordre du mode Bord.
 
-Les réglages sont répartis en trois onglets : **Emplacement** pour l’écran, les bords et les coins ; **Apparence** pour le masquage, la corbeille et l’opacité ; **Général** pour le démarrage et la restauration du dock. La fenêtre est redimensionnable, avec un bouton Terminer toujours accessible.
+Les réglages sont répartis en cinq onglets : **Emplacement** pour l’écran, les bords et les coins ; **Apparence** pour le masquage, la corbeille et l’opacité ; **Général** pour le démarrage et la restauration du dock ; **Clavier** pour les raccourcis, et **Menus** pour choisir les commandes du clic droit. La fenêtre est redimensionnable, avec un bouton Terminer toujours accessible.
 
 [Aperçu des nouveaux réglages](docs/images/settings.png)
 
@@ -41,7 +45,7 @@ Un clic lance une application ou retrouve sa fenêtre ouverte ; si plusieurs fen
 
 Les applications classiques ajoutées depuis le catalogue Windows, comme Firefox, sont reconnues par leur exécutable réel lorsque leurs processus ne fournissent pas d’identifiant Windows. Les entrées existantes en bénéficient sans nouvel ajout.
 
-Les menus des icônes regroupent uniquement leurs propres actions. Pour ajouter des éléments, ouvrir les réglages ou quitter WinDock, faites un clic droit sur le fond du dock. Le menu de la corbeille propose seulement **Vider la corbeille…** (grisé si elle est vide) et **Masquer du dock**. Pour la réafficher, activez **Réglages → Apparence → Afficher la corbeille**.
+Un clic droit sur le fond du dock ou sur l’engrenage ouvre le menu général. Pour créer une copie à côté d’un séparateur, faites un clic droit dessus et choisissez **Dupliquer le séparateur**. Le menu de la corbeille propose **Vider la corbeille…** (grisé si elle est vide) et **Masquer du dock**. Pour la réafficher, activez **Réglages → Apparence → Afficher la corbeille**.
 
 ## Pour aller plus loin
 

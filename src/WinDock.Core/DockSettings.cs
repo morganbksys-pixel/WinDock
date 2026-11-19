@@ -19,6 +19,12 @@ public sealed record DockEntry(Guid Id, string Path, bool IsSeparator = false, s
 public sealed class DockSettings
 {
     public bool AutoHide { get; set; } = true;
+    /// <summary>Global shortcut for toggling automatic hiding, or null when disabled.</summary>
+    public DockHotkey? AutoHideHotkey { get; set; } = DockHotkey.ToggleAutoHide;
+    /// <summary>Global shortcut for opening settings, or null when disabled.</summary>
+    public DockHotkey? SettingsHotkey { get; set; } = DockHotkey.OpenSettings;
+    /// <summary>Stable category and command identifiers hidden from context menus.</summary>
+    public HashSet<string> HiddenMenuCommands { get; set; } = [];
     public bool ShowRecycleBin { get; set; }
     public DockEdge Edge { get; set; } = DockEdge.Bottom;
     /// <summary>Whether the dock is centered on an edge or anchored to a corner.</summary>
@@ -74,6 +80,7 @@ public sealed class SettingsStore(string path)
                 !EntryRules.IsValid(settings.Entries) ||
                 settings.Entries.Select(e => e.Id).Distinct().Count() != settings.Entries.Count)
                 throw new JsonException("Configuration invalide.");
+            settings.HiddenMenuCommands ??= [];
             return settings;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)

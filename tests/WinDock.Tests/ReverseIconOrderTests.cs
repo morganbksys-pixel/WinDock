@@ -73,7 +73,7 @@ internal static partial class Program
                         surface.Arrange(new Rect(new Point(), surface.DesiredSize)); surface.UpdateLayout();
                     }
                     Arrange();
-                    var original = panel.Children.OfType<Button>().Select(b => b.Tag).ToArray();
+                    var original = panel.Children.OfType<Button>().Where(b => b != window.SettingsButton).Select(b => b.Tag).ToArray();
                     var picker = new DockPositionPicker(settings, () => typeof(DockWindow).GetMethod("ApplyPositionChange", PrivateInstance)!.Invoke(window, null));
                     picker.Measure(new Size(600, 600));
                     picker.Arrange(new Rect(new Point(), picker.DesiredSize)); picker.UpdateLayout();
@@ -84,10 +84,10 @@ internal static partial class Program
                     {
                         command.IsChecked = !command.IsChecked; Arrange();
                         Check(settings.ReverseIconOrder == (flip == 0) && command.IsChecked == (flip == 0));
-                        Check(panel.Children.OfType<Button>().Select(b => b.Tag).SequenceEqual(flip == 0 ? original.Reverse() : original));
+                        Check(panel.Children.OfType<Button>().Where(b => b != window.SettingsButton).Select(b => b.Tag).SequenceEqual(flip == 0 ? original.Reverse() : original));
                         Check(settings.Entries.SequenceEqual(entries) && store.Load(out _).Entries.SequenceEqual(entries));
                         Check(store.Load(out _).ReverseIconOrder == (flip == 0));
-                        var physical = panel.Children.OfType<Button>().ToArray();
+                        var physical = panel.Children.OfType<Button>().Where(b => b != window.SettingsButton).ToArray();
                         var logical = settings.Layout.Reversed ? physical.Reverse().ToArray() : physical;
                         foreach (var button in logical.Where(b => b.Tag is DockEntry))
                         {
@@ -129,7 +129,7 @@ internal static partial class Program
                     Check(settings.ReverseIconOrder);
                     settings.PlacementMode = DockPlacementMode.Corner;
                     typeof(DockWindow).GetMethod("RenderItems", PrivateInstance)!.Invoke(window, null);
-                    Check(panel.Children.OfType<Button>().Select(b => b.Tag).SequenceEqual(original.Reverse()));
+                    Check(panel.Children.OfType<Button>().Where(b => b != window.SettingsButton).Select(b => b.Tag).SequenceEqual(original.Reverse()));
                 }
                 finally { window.Close(); }
             }

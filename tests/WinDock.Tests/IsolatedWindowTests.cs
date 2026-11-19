@@ -72,11 +72,11 @@ internal static partial class Program
                     Console.WriteLine($"REAL HWND PASS: {layout.Mode}/{layout.EffectiveEdge}/{layout.Corner}/{layout.Orientation}; {updates} periodic placements; group and label isolated.");
                     if (layout == AllLayouts().Last())
                     {
-                        window.ContextMenu.Items.OfType<MenuItem>().Single(i => Equals(i.Header, "Réglages…")).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                        window.SettingsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                         var dialog = Application.Current.Windows.Cast<Window>().Single(w => w.Title == "Réglages — WinDock");
                         IsolatedDesktop.VerifyWindow(new WindowInteropHelper(dialog).Handle, desktop);
                         var view = (DockSettingsView)dialog.Content;
-                        foreach (var tab in new[] { "Emplacement", "Apparence", "Général" })
+                        foreach (var tab in new[] { "Emplacement", "Apparence", "Général", "Clavier", "Menus" })
                         {
                             view.SelectPage(tab); dialog.UpdateLayout();
                             SavePreview(dialog, Path.Combine(output, "settings-" + tab + ".png"));
@@ -104,7 +104,7 @@ internal static partial class Program
                         Check(reversedGroup.Items.Children.OfType<Button>().Select(b => ((DockEntry)b.Tag).Id)
                             .SequenceEqual(settings.Entries.Where(e => e.GroupId == group.Id).Select(e => e.Id)));
                         var groupButton = panel.Children.OfType<Button>().Single(b => b.Tag is DockEntry e && e.Id == group.Id);
-                        Check(MenuHeaders(groupButton.ContextMenu).SequenceEqual(new[] { "Ajouter…", "Renommer…", "Dissoudre le groupe" }));
+                        Check(MenuHeaders(groupButton.ContextMenu).SequenceEqual(new[] { "Ajouter une application…", "Renommer…", "Dissoudre le groupe" }));
                         groupButton.ContextMenu.PlacementTarget = groupButton; groupButton.ContextMenu.IsOpen = true;
                         PumpUntil(() => PresentationSource.FromVisual(groupButton.ContextMenu) is HwndSource);
                         SavePreview(groupButton.ContextMenu, Path.Combine(output, "menu-group.png"));
@@ -115,7 +115,7 @@ internal static partial class Program
                         var dockMenu = window.ContextMenu;
                         dockMenu.PlacementTarget = window; dockMenu.IsOpen = true;
                         PumpUntil(() => PresentationSource.FromVisual(dockMenu) is HwndSource);
-                        Check(MenuHeaders(dockMenu).SequenceEqual(new[] { "Ajouter…", "Ajouter un séparateur", "Réglages…", "Quitter WinDock" }));
+                        Check(MenuHeaders(dockMenu).SequenceEqual(new[] { "Ajouter une application…", "Ajouter un séparateur", "Quitter" }));
                         var reversedPopup = ((HwndSource)PresentationSource.FromVisual(dockMenu)).Handle;
                         typeof(DockWindow).GetMethod("RefreshPlacement", PrivateInstance)!.Invoke(window, null);
                         Check(dockMenu.IsOpen && IsAbove(reversedPopup, hwnd));
@@ -139,7 +139,8 @@ internal static partial class Program
                         {
                             view.SelectPage(tab); dialog.UpdateLayout();
                             var page = (ScrollViewer)((TabItem)view.Tabs.SelectedItem).Content;
-                            Check(page.ScrollableHeight > 0 && view.CloseButton.IsVisible);
+                            Check(page.VerticalScrollBarVisibility == ScrollBarVisibility.Hidden &&
+                                page.ComputedVerticalScrollBarVisibility != Visibility.Visible && view.CloseButton.IsVisible);
                             var footer = view.CloseButton.TransformToAncestor(view).TransformBounds(new Rect(view.CloseButton.RenderSize));
                             Check(footer.Bottom <= view.ActualHeight + 1 && footer.Y >= 0);
                         }
@@ -147,7 +148,7 @@ internal static partial class Program
                         dialog.Close();
                         var restored = new SettingsStore(Path.Combine(temporary, "isolated.json")).Load(out var warning);
                         Check(warning is null && restored.RequireExactCorner && restored.AutoHide && restored.ShowRecycleBin && restored.BackgroundOpacity == 0.58 && restored.ReverseIconOrder);
-                        Console.WriteLine("SETTINGS PASS: three pages, live switches, opacity, exact-corner persistence and fixed footer at 300 DIP height.");
+                        Console.WriteLine("SETTINGS PASS: five pages, live switches, opacity, exact-corner persistence and fixed footer at 300 DIP height.");
                     }
                 }
                 finally { window.Close(); }

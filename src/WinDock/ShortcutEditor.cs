@@ -21,7 +21,7 @@ internal sealed class ShortcutEditor : Window
     internal ShortcutEditor(DockEntry entry, ManagedShortcuts shortcuts, Action<DockEntry> commit)
     {
         original = entry;
-        Title = "Modifier / réparer — WinDock";
+        Title = "Modifier le raccourci";
         Width = 560; SizeToContent = SizeToContent.Height; ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         Background = new SolidColorBrush(Color.FromRgb(27, 30, 39));

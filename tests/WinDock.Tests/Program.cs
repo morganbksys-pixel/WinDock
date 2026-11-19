@@ -648,14 +648,15 @@ internal static partial class Program
                     Check(frame.Background.Opacity == 0.35);
                     var panel = (StackPanel)((Viewbox)frame.Child).Child;
                     var buttons = panel.Children.OfType<Button>().ToArray();
-                    Check(buttons.Length == count);
+                    Check(buttons[^1] == window.SettingsButton);
+                    Check(buttons.Length == count + 1);
                     if (count == 0) Check(panel.Children.OfType<TextBlock>().Single().Text == "Clic droit pour ajouter" && window.AllowDrop);
-                    var commonActions = new[] { "Ajouter…", "Ajouter un séparateur", "Réglages…", "Quitter WinDock" };
+                    var commonActions = new[] { "Ajouter une application…", "Ajouter un séparateur", "Quitter" };
                     Check(window.ContextMenu.Items.OfType<MenuItem>().Where(item => item.Visibility == Visibility.Visible).Select(item => (string)item.Header).SequenceEqual(commonActions));
-                    foreach (var button in buttons)
+                    foreach (var button in buttons.Where(b => b != window.SettingsButton))
                     {
                         var entry = (DockEntry)button.Tag;
-                        var actions = entry.IsSeparator ? new[] { "Retirer du dock" } : new[] { "Lancer à nouveau", "Modifier / réparer…", "Retirer du dock" };
+                        var actions = entry.IsSeparator ? new[] { "Dupliquer le séparateur", "Retirer du dock" } : new[] { "Lancer à nouveau", "Modifier le raccourci…", "Retirer du dock" };
                         Check(button.ContextMenu.Items.OfType<MenuItem>().Where(item => item.Visibility == Visibility.Visible).Select(item => (string)item.Header).SequenceEqual(actions));
                         var bounds = button.TransformToAncestor(frame).TransformBounds(new Rect(button.RenderSize));
                         if (!(bounds.Left >= 8 && bounds.Top >= 8 && bounds.Right <= frame.ActualWidth - 8 && bounds.Bottom <= frame.ActualHeight - 8))
@@ -671,6 +672,7 @@ internal static partial class Program
             RunCornerWindowTests(temporary, args);
             RunMenuBackgroundTests();
             RunContextualMenuTests(temporary, args);
+            RunDockKeyboardTests(temporary, args);
             RunExplorerRestartWindowTests(temporary, args);
             Run("Settings restoration previews the exact selection and supports cancellation and confirmation", () =>
             {
@@ -683,7 +685,7 @@ internal static partial class Program
                 var window = new DockWindow(settings, store, new FakeRecycleBin(), new FakeApplicationWindows(), new DefaultDockService(store, environment)); window.Show();
                 try
                 {
-                    window.ContextMenu.Items.OfType<MenuItem>().Single(i => Equals(i.Header, "Réglages…")).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    window.SettingsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     var dialog = Application.Current.Windows.Cast<Window>().Single(w => w.Title == "Réglages — WinDock");
                     var view = (DockSettingsView)dialog.Content;
                     view.SelectPage("Général");
@@ -743,7 +745,7 @@ internal static partial class Program
                 var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(10) };
                 try
                 {
-                    window.ContextMenu.Items.OfType<MenuItem>().Single(i => Equals(i.Header, "Réglages…")).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    window.SettingsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     var settingsDialog = Application.Current.Windows.Cast<Window>().Single(w => w.Title == "Réglages — WinDock");
                     timer.Tick += (_, _) =>
                     {
@@ -760,7 +762,7 @@ internal static partial class Program
                     PumpUntil(() => first.IsCompleted);
                     Check(!first.Result && requested.IsCancellationRequested && openingMilliseconds >= 0);
                     Console.WriteLine("Instrumented confirmation first render: " + openingMilliseconds + " ms; discovery still blocked.");
-                    window.ContextMenu.Items.OfType<MenuItem>().Single(i => Equals(i.Header, "Réglages…")).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    window.SettingsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     var reopened = Application.Current.Windows.Cast<Window>().Single(w => w.Title == "Réglages — WinDock");
                     var reopenedView = (DockSettingsView)reopened.Content;
                     Check(reopenedView.SettingsControls.OfType<Button>().Single(b => Equals(b.Content, "Restaurer le dock par défaut…")).IsEnabled);
@@ -952,7 +954,7 @@ internal static partial class Program
                 try
                 {
                     var panel = (StackPanel)((Viewbox)((Border)window.Content).Child).Child;
-                    var button = panel.Children.OfType<Button>().Single();
+                    var button = panel.Children.OfType<Button>().Single(b => b.Tag is DockEntry);
                     var candidate = new ApplicationWindow(1, 10, entry.Path, null, "Document _1");
                     var first = window.OpenEntryAsync(entry, button);
                     var duplicate = window.OpenEntryAsync(entry, button);
@@ -1020,7 +1022,7 @@ internal static partial class Program
                 try
                 {
                     var panel = (StackPanel)((Viewbox)((Border)window.Content).Child).Child;
-                    var button = panel.Children.OfType<Button>().Single();
+                    var button = panel.Children.OfType<Button>().Single(b => b.Tag is DockEntry);
                     var opening = window.OpenEntryAsync(entry, button);
                     service.Lists[^1].SetResult([]);
                     PumpUntil(() => opening.IsCompleted && File.Exists(output), 10000);
@@ -1117,8 +1119,8 @@ internal static partial class Program
                 try
                 {
                     var panel = (StackPanel)((Viewbox)((Border)window.Content).Child).Child;
-                    var button = panel.Children.OfType<Button>().Last();
-                    Check(button.Tag is null && panel.Children.Count == 3 && settings.Entries.Count == 2);
+                    var button = panel.Children.OfType<Button>().Last(b => b != window.SettingsButton);
+                    Check(button.Tag is null && panel.Children.Count == 4 && settings.Entries.Count == 2);
                     string Label() => ((TextBlock)((Border)((ToolTip)button.ToolTip).Content).Child).Text;
                     void Refresh()
                     {
@@ -1168,20 +1170,37 @@ internal static partial class Program
                 var store = new SettingsStore(Path.Combine(temporary, "settings-switches.json"));
                 var settings = new DockSettings();
                 var window = new DockWindow(settings, store, new FakeRecycleBin());
-                var item = window.ContextMenu.Items.OfType<MenuItem>().Single(i => Equals(i.Header, "Réglages…"));
+                var item = window.SettingsButton;
                 try
                 {
-                    item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    item.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     var dialog = Application.Current.Windows.Cast<Window>().Single(w => w.Title == "Réglages — WinDock");
                     Check(!dialog.Topmost && dialog.IsActive);
                     dialog.WindowState = WindowState.Minimized;
-                    item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    item.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     Check(dialog.WindowState == WindowState.Normal && !dialog.Topmost && dialog.IsActive);
                     var view = (DockSettingsView)dialog.Content;
-                    view.SelectPage("Apparence");
+                    foreach (var tab in view.Tabs.Items.OfType<TabItem>())
+                    {
+                        view.Tabs.SelectedItem = tab;
+                        dialog.UpdateLayout();
+                        var page = (ScrollViewer)tab.Content;
+                        Check(page.VerticalScrollBarVisibility == ScrollBarVisibility.Hidden);
+                        if (args.Length == 2 && args[0] == "--preview")
+                            SavePreview(dialog, Path.Combine(args[1], $"settings-{tab.Header}.png"));
+                        if (dialog.ActualWidth >= 600 && dialog.ActualHeight >= 600 && page.ScrollableHeight > 1)
+                            throw new InvalidOperationException($"{tab.Header} scrolls by {page.ScrollableHeight:F1} DIPs at the default size.");
+                    }
+                    view.SelectPage("Emplacement");
                     dialog.MaxHeight = 260;
                     dialog.UpdateLayout();
-                    Check(((ScrollViewer)((TabItem)view.Tabs.SelectedItem).Content).ScrollableHeight > 0 && dialog.ActualHeight <= 260 && view.CloseButton.IsVisible);
+                    var compactPage = (ScrollViewer)((TabItem)view.Tabs.SelectedItem).Content;
+                    Check(compactPage.ScrollableHeight > 0 && dialog.ActualHeight <= 260 && view.CloseButton.IsVisible);
+                    view.PositionPanel.Children.OfType<ComboBox>().Single().BringIntoView();
+                    dialog.UpdateLayout();
+                    Check(compactPage.VerticalOffset > 0 && compactPage.ComputedVerticalScrollBarVisibility != Visibility.Visible);
+                    if (args.Length == 2 && args[0] == "--preview")
+                        SavePreview(dialog, Path.Combine(args[1], "settings-compact.png"));
                     var autoHide = view.SettingsControls.OfType<CheckBox>().Single(c => Equals(c.Content, "Masquage automatique"));
                     autoHide.IsChecked = false;
                     autoHide.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));
@@ -1190,7 +1209,7 @@ internal static partial class Program
                     recycle.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));
                     Check(!store.Load(out _).AutoHide && store.Load(out _).ShowRecycleBin);
                     var dockPanel = (StackPanel)((Viewbox)((Border)window.Content).Child).Child;
-                    Check(dockPanel.Children.Count == 1 && dockPanel.Children[0] is Button { Tag: null });
+                    Check(dockPanel.Children.Count == 2 && dockPanel.Children[0] is Button { Tag: null } && dockPanel.Children[1] == window.SettingsButton);
                     var other = new Window { Width = 200, Height = 100 };
                     try { other.Show(); other.Activate(); Check(!dialog.Topmost && other.IsActive); }
                     finally { other.Close(); }
@@ -1210,7 +1229,7 @@ internal static partial class Program
                         window.Show();
                         window.UpdateLayout();
                         var panel = (StackPanel)((Viewbox)((Border)window.Content).Child).Child;
-                        var button = panel.Children.OfType<Button>().Single();
+                        var button = panel.Children.OfType<Button>().Single(b => b.Tag is DockEntry);
                         var label = (ToolTip)button.ToolTip;
                         label.IsOpen = true;
                         PumpUntil(() => label.ActualWidth > 0 && PresentationSource.FromVisual(label) is not null);
@@ -1252,7 +1271,7 @@ internal static partial class Program
                         window.Show();
                         PumpUntil(() => window.OwnedWindows.Cast<Window>().Any(w => w is IndicatorWindow));
                         var panel = (StackPanel)((Viewbox)((Border)window.Content).Child).Child;
-                        var button = panel.Children.OfType<Button>().Single();
+                        var button = panel.Children.OfType<Button>().Single(b => b.Tag is DockEntry);
                         var menu = button.ContextMenu;
                         menu.PlacementTarget = button;
                         menu.IsOpen = true;
@@ -1356,10 +1375,11 @@ internal static partial class Program
                 try
                 {
                     var panel = (StackPanel)((Viewbox)((Border)window.Content).Child).Child;
-                    var button = panel.Children.OfType<Button>().Single();
+                    var button = panel.Children.OfType<Button>().Single(b => b.Tag is DockEntry);
                     var menu = button.ContextMenu;
                     menu.PlacementTarget = button;
-                    bool HasClose() => menu.Items.OfType<MenuItem>().Any(i => ((string?)i.Header)?.StartsWith("Fermer") == true);
+                    var closeRow = (MenuItem)menu.Items[^1];
+                    bool HasClose() => closeRow.Visibility == Visibility.Visible;
                     menu.IsOpen = true;
                     PumpUntil(() => service.Pending.Count == 1);
                     menu.IsOpen = false;
@@ -1371,15 +1391,26 @@ internal static partial class Program
                     service.Pending[1].SetResult(0);
                     window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
                     Check(!HasClose());
+                    menu.IsOpen = false; menu.IsOpen = true;
+                    PumpUntil(() => service.Pending.Count == 3 && PresentationSource.FromVisual(menu) is HwndSource);
+                    menu.RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,
+                        PresentationSource.FromVisual(menu), 0, System.Windows.Input.Key.Down)
+                    {
+                        RoutedEvent = UIElement.PreviewKeyDownEvent
+                    });
+                    service.Pending[2].SetResult(2);
+                    window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+                    Check(!HasClose());
                     foreach (var count in new[] { 1, 2 })
                     {
                         menu.IsOpen = false; menu.IsOpen = true;
                         service.Pending[^1].SetResult(count);
                         PumpUntil(HasClose);
-                        Check(Equals(((MenuItem)menu.Items[0]).Header, count == 1 ? "Fermer l’application" : "Fermer toutes les fenêtres"));
-                        Check(Equals(((MenuItem)menu.Items[1]).Header, "Lancer à nouveau"));
-                        Check(menu.Items[2] is Separator);
-                        Check(Equals(((MenuItem)menu.Items[3]).Header, "Modifier / réparer…"));
+                        Check(ReferenceEquals(closeRow, menu.Items[^1]));
+                        Check(Equals(closeRow.Header, count == 1 ? "Fermer" : "Fermer toutes les fenêtres"));
+                        Check(Equals(((MenuItem)menu.Items[0]).Header, "Lancer à nouveau"));
+                        Check(menu.Items[^2] is Separator { Visibility: Visibility.Visible });
+                        Check(Equals(((MenuItem)menu.Items[1]).Header, "Modifier le raccourci…"));
                     }
                     if (args.Length == 2 && args[0] == "--preview")
                     {
@@ -1390,7 +1421,7 @@ internal static partial class Program
                         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
                         using var stream = File.Create(Path.Combine(args[1], "close-menu.png")); encoder.Save(stream);
                     }
-                    ((MenuItem)menu.Items[0]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    closeRow.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                     Check(!menu.IsOpen && service.Closes == 1);
                 }
                 finally { window.Close(); }
@@ -1845,7 +1876,7 @@ internal static partial class Program
                             var refresh = window.RefreshRecycleAsync();
                             PumpUntil(() => refresh.IsCompleted);
                             refresh.GetAwaiter().GetResult();
-                            var bin = ((StackPanel)((Viewbox)((Border)window.Content).Child).Child).Children.OfType<Button>().Last();
+                            var bin = ((StackPanel)((Viewbox)((Border)window.Content).Child).Child).Children.OfType<Button>().Last(b => b != window.SettingsButton);
                             Check(bin.Content is Image { Source.IsFrozen: true });
                         }
                         var content = (FrameworkElement)window.Content;
@@ -1859,8 +1890,8 @@ internal static partial class Program
                         encoder.Save(stream);
                         if (populated)
                         {
-                            var settingsItem = window.ContextMenu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "Réglages…"));
-                            settingsItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                            var settingsItem = window.SettingsButton;
+                            settingsItem.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                             var settingsWindow = Application.Current.Windows.Cast<Window>().Single(w => w.Title == "Réglages — WinDock");
                             try
                             {

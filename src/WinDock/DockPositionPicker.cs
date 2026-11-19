@@ -14,7 +14,7 @@ internal sealed class DockPositionPicker : StackPanel
     private readonly List<(RadioButton Button, DockEdge Edge)> edgeButtons = [];
     private readonly List<(RadioButton Button, DockCorner Corner)> cornerButtons = [];
     private readonly StackPanel orientationPanel = new();
-    private readonly TextBlock summary = new() { Foreground = Brushes.LightGray, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 20) };
+    private readonly TextBlock summary = new() { Foreground = DockSettingsView.Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 12) };
     private readonly Canvas preview = new() { Width = 104, Height = 62, IsHitTestVisible = false };
     private readonly string groupPrefix = Guid.NewGuid().ToString("N");
     private readonly Grid layoutBody = new();
@@ -26,8 +26,7 @@ internal sealed class DockPositionPicker : StackPanel
     internal DockPositionPicker(DockSettings settings, Action changed)
     {
         this.settings = settings;
-        Children.Add(new TextBlock { Text = "Emplacement", Foreground = Brushes.LightGray });
-        var modes = new Grid { Margin = new Thickness(0, 8, 0, 12) };
+        var modes = new Grid { Margin = new Thickness(0, 0, 0, 10) };
         modes.ColumnDefinitions.Add(new()); modes.ColumnDefinitions.Add(new());
         foreach (var (mode, label) in new[] { (DockPlacementMode.Edge, "Bord"), (DockPlacementMode.Corner, "Coin") })
         {
@@ -39,10 +38,11 @@ internal sealed class DockPositionPicker : StackPanel
         var screen = new Grid { Margin = new Thickness(8) };
         for (var i = 0; i < 3; i++)
         {
-            screen.ColumnDefinitions.Add(new ColumnDefinition { Width = i == 1 ? new GridLength(1, GridUnitType.Star) : new GridLength(100) });
-            screen.RowDefinitions.Add(new RowDefinition { Height = i == 1 ? new GridLength(74) : new GridLength(48) });
+            screen.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            screen.RowDefinitions.Add(new RowDefinition { Height = i == 1 ? new GridLength(64) : new GridLength(42) });
         }
-        Grid.SetRow(preview, 1); Grid.SetColumn(preview, 1); screen.Children.Add(preview);
+        var previewBox = new Viewbox { Child = preview, StretchDirection = StretchDirection.DownOnly };
+        Grid.SetRow(previewBox, 1); Grid.SetColumn(previewBox, 1); screen.Children.Add(previewBox);
         foreach (var (edge, label, row, column) in new[]
         {
             (DockEdge.Top, "Haut", 0, 1), (DockEdge.Bottom, "Bas", 2, 1),
@@ -69,8 +69,8 @@ internal sealed class DockPositionPicker : StackPanel
         }
         var screenFrame = new Border
         {
-            Child = screen, CornerRadius = new CornerRadius(12), BorderBrush = new SolidColorBrush(Color.FromRgb(92, 104, 124)),
-            BorderThickness = new Thickness(1), Background = new SolidColorBrush(Color.FromRgb(20, 23, 31))
+            Child = screen, CornerRadius = new CornerRadius(12), BorderBrush = new SolidColorBrush(Color.FromRgb(206, 221, 237)),
+            BorderThickness = new Thickness(1), Background = new SolidColorBrush(Color.FromRgb(240, 246, 252))
         };
         layoutBody.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
         layoutBody.ColumnDefinitions.Add(new() { Width = new GridLength(0) });
@@ -78,7 +78,7 @@ internal sealed class DockPositionPicker : StackPanel
         layoutBody.RowDefinitions.Add(new() { Height = GridLength.Auto });
         layoutBody.Children.Add(screenFrame);
         orientationPanel.Margin = new Thickness(0, 12, 0, 0);
-        orientationPanel.Children.Add(new TextBlock { Text = "Orientation", Foreground = Brushes.LightGray });
+        orientationPanel.Children.Add(new TextBlock { Text = "Orientation", Foreground = DockSettingsView.Muted });
         orientations.Margin = new Thickness(0, 8, 0, 0);
         orientations.ColumnDefinitions.Add(new()); orientations.ColumnDefinitions.Add(new());
         orientations.RowDefinitions.Add(new() { Height = GridLength.Auto }); orientations.RowDefinitions.Add(new() { Height = GridLength.Auto });
@@ -93,7 +93,7 @@ internal sealed class DockPositionPicker : StackPanel
         reverseOrder = new CheckBox
         {
             Content = new TextBlock { Text = "Inverser l’ordre des icônes", TextWrapping = TextWrapping.Wrap },
-            IsChecked = settings.ReverseIconOrder, Foreground = Brushes.White, Margin = new Thickness(0, 14, 0, 0),
+            IsChecked = settings.ReverseIconOrder, Foreground = DockSettingsView.Ink, Margin = new Thickness(0, 14, 0, 0),
             ToolTip = "Inverse aussi les séparateurs, les tuiles de groupes et la corbeille."
         };
         AutomationProperties.SetName(reverseOrder, "Inverser l’ordre des icônes");
@@ -112,7 +112,7 @@ internal sealed class DockPositionPicker : StackPanel
         exactCorner = new CheckBox
         {
             Content = new TextBlock { Text = "Exiger le coin exact", TextWrapping = TextWrapping.Wrap },
-            IsChecked = settings.RequireExactCorner, Foreground = Brushes.White, Margin = new Thickness(0, 14, 0, 0),
+            IsChecked = settings.RequireExactCorner, Foreground = DockSettingsView.Ink, Margin = new Thickness(0, 14, 0, 0),
             ToolTip = "Placez la souris tout au bout du coin pendant 300 ms pour ouvrir le dock."
         };
         AutomationProperties.SetName(exactCorner, "Exiger le coin exact");

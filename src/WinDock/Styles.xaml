@@ -6,36 +6,39 @@
         <Grid KeyboardNavigation.TabNavigation="Local">
           <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
           <TabPanel IsItemsHost="True" KeyboardNavigation.TabIndex="1" />
-          <ContentPresenter Grid.Row="1" ContentSource="SelectedContent" KeyboardNavigation.TabIndex="2" />
+          <Border Grid.Row="1" Margin="0,6,0,0" CornerRadius="10" BorderThickness="1"
+                  Background="White" BorderBrush="#D5DFEA">
+            <ContentPresenter ContentSource="SelectedContent" KeyboardNavigation.TabIndex="2" />
+          </Border>
         </Grid>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
     <Style x:Key="SettingsTab" TargetType="TabItem">
-      <Setter Property="Foreground" Value="#D0D5DF" />
+      <Setter Property="Foreground" Value="#35465C" />
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TabItem">
-        <Border x:Name="Surface" Background="#252B38" BorderBrush="#4F596D" BorderThickness="1" CornerRadius="8" Margin="0,0,8,0" Padding="16,9">
+        <Border x:Name="Surface" Background="#EFF3F9" BorderBrush="#D5DFEA" BorderThickness="1" CornerRadius="8" Margin="0,0,5,2" Padding="11,8">
           <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" />
         </Border>
         <ControlTemplate.Triggers>
-          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#39445A" /></Trigger>
-          <Trigger Property="IsSelected" Value="True"><Setter Property="Foreground" Value="White" /><Setter TargetName="Surface" Property="Background" Value="#365E7C" /><Setter TargetName="Surface" Property="BorderBrush" Value="#9BD8FF" /></Trigger>
-          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="White" /></Trigger>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#E6EEF8" /></Trigger>
+          <Trigger Property="IsSelected" Value="True"><Setter Property="Foreground" Value="#17477D" /><Setter TargetName="Surface" Property="Background" Value="#DDEEFF" /><Setter TargetName="Surface" Property="BorderBrush" Value="#81AFE0" /></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#225B96" /></Trigger>
         </ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
     <Style x:Key="PositionChoice" TargetType="RadioButton">
-      <Setter Property="Foreground" Value="#F3F4F8" />
+      <Setter Property="Foreground" Value="#263C55" />
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="FontSize" Value="12" />
       <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RadioButton">
-        <Border x:Name="Surface" Background="#303747" BorderBrush="#626E85" BorderThickness="1" CornerRadius="7" Padding="6,5">
+        <Border x:Name="Surface" Background="#FFFFFF" BorderBrush="#BCCDE0" BorderThickness="1" CornerRadius="7" Padding="6,5">
           <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Border>
         <ControlTemplate.Triggers>
-          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#414E64" /></Trigger>
-          <Trigger Property="IsChecked" Value="True"><Setter TargetName="Surface" Property="Background" Value="#365E7C" /><Setter TargetName="Surface" Property="BorderBrush" Value="#9BD8FF" /></Trigger>
-          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="White" /></Trigger>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#E6EEF8" /></Trigger>
+          <Trigger Property="IsChecked" Value="True"><Setter TargetName="Surface" Property="Background" Value="#DDEEFF" /><Setter TargetName="Surface" Property="BorderBrush" Value="#81AFE0" /></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#225B96" /></Trigger>
           <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5" /></Trigger>
         </ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
@@ -46,14 +49,14 @@
         <Grid Background="Transparent">
           <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="44" /></Grid.ColumnDefinitions>
           <ContentPresenter VerticalAlignment="Center" Margin="0,0,12,0" RecognizesAccessKey="True" />
-          <Border x:Name="Track" Grid.Column="1" Width="40" Height="22" CornerRadius="11" Background="#626672">
+          <Border x:Name="Track" Grid.Column="1" Width="40" Height="22" CornerRadius="11" Background="#68788A">
             <Ellipse x:Name="Thumb" Width="16" Height="16" Fill="White" HorizontalAlignment="Left" Margin="3" />
           </Border>
         </Grid>
         <ControlTemplate.Triggers>
-          <Trigger Property="IsChecked" Value="True"><Setter TargetName="Track" Property="Background" Value="#387AA3" /><Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" /></Trigger>
+          <Trigger Property="IsChecked" Value="True"><Setter TargetName="Track" Property="Background" Value="#2C66A5" /><Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" /></Trigger>
           <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5" /></Trigger>
-          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Track" Property="BorderBrush" Value="White" /><Setter TargetName="Track" Property="BorderThickness" Value="1" /></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Track" Property="BorderBrush" Value="#225B96" /><Setter TargetName="Track" Property="BorderThickness" Value="1" /></Trigger>
         </ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
@@ -69,7 +72,112 @@
         <ControlTemplate.Triggers>
           <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#25FFFFFF" /></Trigger>
           <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="#40FFFFFF" /></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="Background" Value="#365E7C" /></Trigger>
+          <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.5" /></Trigger>
         </ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
+  <Style x:Key="SettingsActionButton" TargetType="Button">
+    <Setter Property="Foreground" Value="#214773" />
+    <Setter Property="Background" Value="#EAF1FA" />
+    <Setter Property="BorderBrush" Value="#C5D8EE" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template"><Setter.Value>
+      <ControlTemplate TargetType="Button">
+        <Border x:Name="Surface" CornerRadius="7" Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" Padding="{TemplateBinding Padding}">
+          <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
+        </Border>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#729BCD" /></Trigger>
+          <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.75" /></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#17477D" /></Trigger>
+          <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.5" /></Trigger>
+        </ControlTemplate.Triggers>
+      </ControlTemplate>
+    </Setter.Value></Setter>
+  </Style>
+  <Style x:Key="SettingsPrimaryButton" TargetType="Button" BasedOn="{StaticResource SettingsActionButton}">
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Background" Value="#2C66A5" />
+    <Setter Property="BorderBrush" Value="#2C66A5" />
+  </Style>
+  <Style x:Key="DockMenu" TargetType="ContextMenu">
+    <Setter Property="Foreground" Value="{DynamicResource MenuText}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="OverridesDefaultStyle" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ContextMenu">
+          <Border x:Name="DockMenuSurface" Background="{DynamicResource MenuSurface}" BorderBrush="{DynamicResource MenuBorder}"
+                  BorderThickness="1" CornerRadius="8" Padding="4">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+              <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" />
+            </ScrollViewer>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Resources>
+      <Style TargetType="Separator">
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="Separator">
+              <Border Height="1" Margin="6,4" Background="{DynamicResource MenuDivider}" />
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
+      <Style TargetType="MenuItem">
+        <Setter Property="Foreground" Value="{DynamicResource MenuText}" />
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="MenuItem">
+              <Grid>
+                <Border x:Name="Row" CornerRadius="5" MinHeight="32" Padding="10,4"
+                        Background="Transparent" BorderThickness="1" BorderBrush="Transparent"
+                        TextElement.Foreground="{TemplateBinding Foreground}">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center" />
+                    <Path x:Name="Arrow" Grid.Column="1" Visibility="Collapsed" Margin="14,0,0,0"
+                          VerticalAlignment="Center" Data="M 0,0 L 4,4 0,8"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}" StrokeThickness="1.3" />
+                  </Grid>
+                </Border>
+                <Popup x:Name="PART_Popup" Placement="Right" PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                       IsOpen="{TemplateBinding IsSubmenuOpen}" AllowsTransparency="True" Focusable="False">
+                  <Border Background="{DynamicResource MenuSurface}" BorderBrush="{DynamicResource MenuBorder}"
+                          BorderThickness="1" CornerRadius="8" Padding="4">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                      <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" />
+                    </ScrollViewer>
+                  </Border>
+                </Popup>
+              </Grid>
+              <ControlTemplate.Triggers>
+                <Trigger Property="HasItems" Value="True">
+                  <Setter TargetName="Arrow" Property="Visibility" Value="Visible" />
+                </Trigger>
+                <Trigger Property="IsHighlighted" Value="True">
+                  <Setter TargetName="Row" Property="Background" Value="{DynamicResource MenuHover}" />
+                  <Setter Property="Foreground" Value="{DynamicResource MenuHighlightedText}" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                  <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource MenuFocus}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                  <Setter Property="Foreground" Value="{DynamicResource MenuDisabled}" />
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
+    </Style.Resources>
+  </Style>
 </ResourceDictionary>

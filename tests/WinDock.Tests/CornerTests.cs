@@ -140,7 +140,7 @@ internal static partial class Program
                     window.Show(); window.UpdateLayout();
                     var panel = (InsertionPanel)((Viewbox)((Border)window.Content).Child).Child;
                     Check(panel.Orientation == (layout.Horizontal ? Orientation.Horizontal : Orientation.Vertical));
-                    var physical = panel.Children.OfType<Button>().ToArray();
+                    var physical = panel.Children.OfType<Button>().Where(b => b != window.SettingsButton).ToArray();
                     var logical = layout.Reversed ? physical.Reverse().ToArray() : physical;
                     Check(logical.Take(4).Select(b => ((DockEntry)b.Tag).Id).SequenceEqual(entries.Take(4).Select(e => e.Id)) && logical[^1].Tag is null);
                     foreach (var button in logical.Take(4))
@@ -198,7 +198,7 @@ internal static partial class Program
             try
             {
                 window.Show();
-                window.ContextMenu.Items.OfType<MenuItem>().Single(i => Equals(i.Header, "Réglages…")).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                window.SettingsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 var dialog = Application.Current.Windows.Cast<Window>().Single(w => w.Title == "Réglages — WinDock");
                 var picker = ((DockSettingsView)dialog.Content).PositionPanel.Children.OfType<DockPositionPicker>().Single();
                 RadioButton Choice(string name) => VisualChildren(picker).OfType<RadioButton>().Single(b => AutomationProperties.GetName(b) == name);
@@ -248,7 +248,7 @@ internal static partial class Program
                     var surface = (Border)window.Content;
                     var panel = (InsertionPanel)((Viewbox)surface.Child).Child;
                     surface.Measure(new Size(600, 600)); surface.Arrange(new Rect(new Point(), surface.DesiredSize)); surface.UpdateLayout();
-                    var physical = panel.Children.OfType<Button>().ToArray();
+                    var physical = panel.Children.OfType<Button>().Where(b => b != window.SettingsButton).ToArray();
                     var logical = layout.Reversed ? physical.Reverse().ToArray() : physical;
                     Check(logical.Take(count).Select(b => ((DockEntry)b.Tag).Id).SequenceEqual(entries.Select(e => e.Id)) && logical[^1].Tag is null);
                     foreach (var button in logical.Take(count))
@@ -290,7 +290,7 @@ internal static partial class Program
                         settings.PlacementMode = DockPlacementMode.Edge;
                         typeof(DockWindow).GetMethod("RenderItems", PrivateInstance)!.Invoke(window, null);
                         Check(panel.Children.OfType<Button>().Take(count).Select(b => ((DockEntry)b.Tag).Id).SequenceEqual(entries.Select(e => e.Id)));
-                        Check(panel.Children.OfType<Button>().Last().Tag is null && settings.Entries.SequenceEqual(entries));
+                        Check(panel.Children.OfType<Button>().Last(b => b != window.SettingsButton).Tag is null && settings.Entries.SequenceEqual(entries));
                     }
                 }
                 finally { window.Close(); }

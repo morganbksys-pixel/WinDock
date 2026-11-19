@@ -97,11 +97,11 @@ internal static partial class Program
                 var refresh = (Task)typeof(DockWindow).GetMethod("RefreshRunningAsync", PrivateInstance)!.Invoke(window, null)!;
                 PumpUntil(() => refresh.IsCompleted); refresh.GetAwaiter().GetResult();
                 var panel = (InsertionPanel)((Viewbox)((Border)window.Content).Child).Child;
-                var button = panel.Children.OfType<Button>().Single();
+                var button = panel.Children.OfType<Button>().Single(b => b.Tag is DockEntry);
                 Check(((Grid)button.Content).Children.OfType<System.Windows.Shapes.Ellipse>().Single().Visibility == Visibility.Hidden);
                 var menu = button.ContextMenu;
-                Check(MenuHeaders(menu).SequenceEqual(new[] { "Redémarrer l’Explorateur Windows…", "Modifier / réparer…", "Retirer du dock" }));
-                var restart = menu.Items.OfType<MenuItem>().First();
+                Check(MenuHeaders(menu).SequenceEqual(new[] { "Redémarrer l’Explorateur Windows…", "Modifier le raccourci…", "Retirer du dock" }));
+                var restart = menu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "Redémarrer l’Explorateur Windows…"));
                 restart.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 Check(confirmations == 1 && fake.Calls == 0 && restart.IsEnabled);
                 if (args.Length == 2 && args[0] == "--preview")

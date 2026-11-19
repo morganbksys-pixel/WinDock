@@ -1,4 +1,4 @@
-WINDOCK — 0.0.12 — WINDOWS X64
+WINDOCK — 0.0.15 — WINDOWS X64
 
 Deux formats portables, avec le runtime .NET inclus :
 - EXE autonome : placez WinDock.exe dans un dossier permanent.
@@ -13,7 +13,7 @@ Deux formats portables, avec le runtime .NET inclus :
    Les cibles indisponibles ou dupliquées sont omises. Les dossiers déplacés
    conservent leurs emplacements Windows. Un dock existant, même vide, reste inchangé.
 2. Déposez des raccourcis .lnk, des applications .exe ou des dossiers.
-3. Clic droit sur le fond du dock > Ajouter… ouvre le catalogue des applications classiques et Microsoft Store.
+3. Clic droit sur le fond du dock > Ajouter une application… ouvre le catalogue des applications classiques et Microsoft Store.
    Recherchez, cochez les applications puis cliquez sur Ajouter la sélection.
    Ajout manuel, dossiers et séparateurs restent disponibles dans cette fenêtre.
    Le catalogue et les icônes sont gardés en cache après redémarrage, puis
@@ -21,15 +21,21 @@ Deux formats portables, avec le runtime .NET inclus :
 4. Pour retrouver le dock masqué, survolez la petite barre arrondie visible
    en bas de l’écran, juste au-dessus de la barre des tâches. Elle devient
    plus opaque à l’approche et révèle le dock après un bref instant.
-5. Clic droit sur le fond du dock > Réglages > Emplacement pour choisir un bord, un coin ou un autre écran.
+5. Cliquez sur l’engrenage Réglages dans le dock. Dans Emplacement,
+   choisissez un bord, un coin ou un autre écran.
    Apparence regroupe masquage, corbeille et opacité ; Général regroupe
    le démarrage Windows et la restauration des raccourcis. Le bouton
-   Terminer reste accessible et chaque onglet défile sur les petits écrans.
+   Terminer reste accessible et la molette permet de faire défiler les onglets sur les petits écrans.
+   Ctrl + Alt + D bascule le masquage automatique et Ctrl + Alt + P ouvre
+   les réglages, même si le dock est masqué. Modifiez ou désactivez ces
+   combinaisons dans Réglages > Clavier.
+   Dans Réglages > Menus, décochez les commandes dont vous ne vous servez pas.
 6. Glissez les icônes pour les réordonner. Le dock adapte sa taille au contenu.
    Si nécessaire, les icônes rétrécissent pour tenir à l’écran.
-7. Clic droit sur le fond du dock > Quitter WinDock pour arrêter l’application.
+7. Clic droit sur le fond du dock > Quitter pour arrêter l’application.
 8. Clic droit sur le fond du dock > Ajouter un séparateur pour organiser les icônes en groupes.
    Les séparateurs se déplacent par glisser-déposer, comme les icônes.
+   Clic droit sur un séparateur > Dupliquer le séparateur en crée un juste à côté.
 9. Réglages > Apparence > Opacité du fond pour ajuster la transparence (10 à 100 %).
 10. Un point vert indique un processus actif reconnu par son exécutable ou son identité Windows.
     Il peut rester visible sans fenêtre ouverte. Les applications classiques ajoutées
@@ -50,7 +56,7 @@ Deux formats portables, avec le runtime .NET inclus :
 11. Pendant un déplacement, la ligne bleue indique où déposer l’élément.
     Pour retirer une entrée, glissez-la hors du dock jusqu’à voir la corbeille
     rouge puis relâchez. Échap annule ; aucun fichier d’origine n’est supprimé.
-12. Clic droit > Modifier / réparer pour changer la cible, le nom,
+12. Clic droit > Modifier le raccourci… pour changer la cible, le nom,
     les arguments ou le dossier de travail, sans déplacer l’entrée.
 13. Les raccourcis sont copiés dans les données de WinDock : après l’ajout,
     vous pouvez retirer le raccourci du bureau. Un point orange signale

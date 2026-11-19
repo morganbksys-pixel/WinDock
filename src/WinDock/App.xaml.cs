@@ -25,7 +25,7 @@ public partial class App : Application
             try { await StaWorker.RunAsync(_ => { new ManagedShortcuts(store).Migrate(settings); return true; }, startup.Token); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             { warning = (warning is null ? "" : warning + "\n\n") + "Certains raccourcis n’ont pas pu être copiés. Les entrées existantes sont conservées.\n" + ex.Message; }
-            var dock = new DockWindow(settings, store);
+            var dock = new DockWindow(settings, store) { HotkeyFactory = handle => new GlobalHotkeys(handle) };
             MainWindow = dock;
             ShutdownMode = ShutdownMode.OnMainWindowClose;
             dock.Show();
