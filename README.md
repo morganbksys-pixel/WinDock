@@ -2,14 +2,13 @@
 
 Vos applications et dossiers favoris, à portée de clic dans un dock discret pour Windows.
 
-**[Tester la bêta 0.0.15 — ZIP portable Windows x64](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.15/WinDock-0.0.15-win-x64.zip)**. Quittez l’ancienne instance, décompressez le ZIP dans un nouveau dossier et lancez `WinDock.exe`.
+**[Tester la bêta 0.0.17 — ZIP portable Windows x64](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.17/WinDock-0.0.17-win-x64.zip)**. Quittez l’ancienne instance, décompressez le ZIP dans un nouveau dossier et lancez `WinDock.exe`.
 
 ![Aperçu du dock par défaut avec navigateur, messagerie, dossiers et corbeille Windows](docs/images/dock.png)
 
-**[Télécharger WinDock 0.0.12](https://github.com/morganbksys-pixel/WinDock/releases/tag/v0.0.12)**
+**[Télécharger WinDock 0.0.17 bêta](https://github.com/morganbksys-pixel/WinDock/releases/tag/v0.0.17)**
 
-- **[EXE autonome — WinDock.exe](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.12/WinDock.exe)** : prêt à lancer depuis un dossier permanent, avec le runtime .NET inclus.
-- **[ZIP portable — WinDock-0.0.12-win-x64.zip](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.12/WinDock-0.0.12-win-x64.zip)** : décompressez-le et gardez tous ses fichiers ensemble.
+- **[ZIP portable — WinDock-0.0.17-win-x64.zip](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.17/WinDock-0.0.17-win-x64.zip)** : décompressez-le et gardez tous ses fichiers ensemble. Le runtime .NET est inclus.
 
 ## Vos raccourcis, à votre façon
 
