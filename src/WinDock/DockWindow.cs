@@ -212,10 +212,10 @@ public sealed partial class DockWindow : Window
         var proximity = 40 * display.Scale;
         var nearIndicator = new PixelRect(indicatorArea.X - proximity, indicatorArea.Y - proximity,
             indicatorArea.Width + proximity * 2, indicatorArea.Height + proximity * 2).Contains(pointer.X, pointer.Y);
-        indicator?.SetAppearance(settings.AutoHide && !revealed && !fullScreen, nearIndicator, overTrigger);
         if (externalDrag && (Native.GetAsyncKeyState(1) & 0x8000) == 0 && (Native.GetAsyncKeyState(2) & 0x8000) == 0) externalDrag = false;
         UpdateVisibility(fullScreen, overTrigger,
             overIndicator || DockGeometry.ContainsInteraction(placement, settings.Layout, display.Scale, pointer.X, pointer.Y), now);
+        indicator?.SetAppearance(settings.AutoHide && !revealed && !fullScreen, nearIndicator, overTrigger);
     }
 
     internal void UpdateVisibility(bool fullScreen, bool overTrigger, bool overDock, long now)

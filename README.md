@@ -31,7 +31,7 @@ Au premier lancement, WinDock prépare l’Explorateur, votre navigateur, votre 
 
 Même quand le dock est masqué, **Ctrl + Alt + D** bascule le masquage automatique et **Ctrl + Alt + P** ouvre les réglages. Les deux combinaisons peuvent être modifiées ou désactivées dans **Réglages → Clavier**.
 
-En mode **Coin**, un petit repère en L arrondi marque le coin physique choisi. Survolez-le pendant **300 ms** pour retrouver le dock ; sa première icône reste près du coin et les suivantes se déploient vers l’intérieur. Le dock ouvert évite la barre des tâches, et le passage entre le repère et les icônes le maintient visible. Les placements existants sont conservés lors d’une mise à jour.
+En mode **Coin**, un petit point bleu marque le coin physique choisi. Il reste visible à opacité constante tant que le dock est masqué, puis s’estompe à l’ouverture et réapparaît à la fermeture, hors plein écran. Survolez-le pendant **300 ms** pour retrouver le dock ; sa première icône reste près du coin et les suivantes se déploient vers l’intérieur. Le dock ouvert évite la barre des tâches, et le passage entre le repère et les icônes le maintient visible. Les placements existants sont conservés lors d’une mise à jour.
 
 Près des boutons de fenêtre, activez **Réglages → Emplacement → Coin → Exiger le coin exact** : seule l’extrémité du coin révèle le dock, après les mêmes 300 ms. Survoler le reste du repère ne l’ouvre plus.
 

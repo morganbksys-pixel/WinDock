@@ -1,4 +1,4 @@
-WINDOCK — 0.0.15 — WINDOWS X64
+WINDOCK — 0.0.17 — WINDOWS X64
 
 Deux formats portables, avec le runtime .NET inclus :
 - EXE autonome : placez WinDock.exe dans un dossier permanent.
@@ -114,7 +114,9 @@ Deux formats portables, avec le runtime .NET inclus :
 
 21. Réglages > Emplacement > Coin permet de choisir l’un des quatre coins
     physiques de l’écran, puis une orientation horizontale ou verticale.
-    Survolez le petit repère en L arrondi pendant 300 ms pour ouvrir le dock.
+    Survolez le petit point bleu pendant 300 ms pour ouvrir le dock.
+    Il reste visible à opacité constante tant que le dock est masqué, puis
+    s’estompe à l’ouverture et réapparaît à la fermeture, hors plein écran.
     La première icône reste près du coin ; les suivantes s’en éloignent.
     Pour retourner la rangée, activez Inverser l’ordre des icônes
     dans Réglages > Emplacement > Coin.

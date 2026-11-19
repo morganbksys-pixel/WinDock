@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using WinDock;
@@ -96,6 +97,7 @@ internal static partial class Program
 
     private static void RunCornerWindowTests(string temporary, string[] args)
     {
+        RunIndicatorAppearanceTests(args);
         RunReverseIconOrderWindowTests(temporary);
         Run("Corner dwell cancels on departure and preserves fixed, fullscreen and hide delays", () =>
         {
@@ -161,7 +163,7 @@ internal static partial class Program
                     var indicator = window.OwnedWindows.OfType<IndicatorWindow>().Single();
                     Check(!indicator.ShowActivated && !indicator.ShowInTaskbar && !indicator.IsHitTestVisible);
                     var mark = ((Grid)indicator.Content).Children.OfType<System.Windows.Shapes.Path>().Single();
-                    Check(mark.Visibility == Visibility.Visible && mark.Data.IsFrozen && mark.StrokeThickness == 3);
+                    Check(mark.Visibility == Visibility.Visible && mark.Data.IsFrozen && mark.Data is EllipseGeometry { RadiusX: 2.5, RadiusY: 2.5 });
                     var indicatorOrigin = indicator.PointToScreen(new Point());
                     var expectedIndicator = DockGeometry.IndicatorArea(display.Bounds, display.Work, layout, display.Scale);
                     Check(Math.Abs(indicatorOrigin.X - expectedIndicator.X) <= 1 && Math.Abs(indicatorOrigin.Y - expectedIndicator.Y) <= 1);
@@ -228,6 +230,82 @@ internal static partial class Program
                 dialog.Close();
             }
             finally { window.Close(); }
+        });
+    }
+
+    private static void RunIndicatorAppearanceTests(string[] args)
+    {
+        Run("Corner dots keep constant visibility until opening while edge appearance and hiding are preserved", () =>
+        {
+            var indicator = new IndicatorWindow();
+            var sheet = new StackPanel();
+            var previews = args.Length == 2 && args[0] == "--preview" ? args[1]
+                : args.Length == 3 && args[0] == "--background" && args[1] == "--preview" ? args[2] : null;
+            try
+            {
+                foreach (var corner in Enum.GetValues<DockCorner>())
+                {
+                    indicator.Place(new PixelRect(-10000, -10000, 36, 36),
+                        new DockLayout(DockPlacementMode.Corner, DockEdge.Bottom, corner, DockOrientation.Horizontal), 1);
+                    var content = (Grid)indicator.Content;
+                    content.Measure(new Size(36, 36)); content.Arrange(new Rect(0, 0, 36, 36));
+                    content.UpdateLayout();
+                    content.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+                    var mark = content.Children.OfType<System.Windows.Shapes.Path>().Single();
+                    Check(mark.Visibility == Visibility.Visible && ((SolidColorBrush)mark.Fill).Color == Color.FromRgb(37, 132, 214));
+                    Check(!indicator.ShowActivated && !indicator.IsHitTestVisible && !indicator.ShowInTaskbar);
+                    var row = new StackPanel { Orientation = Orientation.Horizontal };
+                    row.Children.Add(new TextBlock { Text = corner.ToString(), Width = 110, VerticalAlignment = VerticalAlignment.Center });
+                    foreach (var state in new[] { (Name: "Repos", Visible: true, Near: false, Over: false, Opacity: 1.0),
+                        (Name: "Proximité", Visible: true, Near: true, Over: false, Opacity: 1.0),
+                        (Name: "Survol", Visible: true, Near: true, Over: true, Opacity: 1.0),
+                        (Name: "Dock ouvert", Visible: false, Near: true, Over: true, Opacity: 0.0) })
+                    {
+                        indicator.SetAppearance(state.Visible, state.Near, state.Over);
+                        indicator.BeginAnimation(UIElement.OpacityProperty, null);
+                        Check(indicator.Opacity == state.Opacity);
+                        if (previews is null) continue;
+                        var bitmap = new RenderTargetBitmap(72, 72, 192, 192, PixelFormats.Pbgra32);
+                        bitmap.Render(content); bitmap.Freeze();
+                        foreach (var background in new[] { Colors.White, Color.FromRgb(32, 32, 32) })
+                        {
+                            var cell = new StackPanel { Width = 94, Margin = new Thickness(2) };
+                            cell.Children.Add(new TextBlock { Text = state.Name, HorizontalAlignment = HorizontalAlignment.Center });
+                            cell.Children.Add(new Border { Height = 60, Background = new SolidColorBrush(background),
+                                Child = new Image { Source = bitmap, Width = 36, Height = 36, Opacity = indicator.Opacity } });
+                            row.Children.Add(cell);
+                        }
+                    }
+                    sheet.Children.Add(row);
+                    Check(mark.Effect is null && mark.Stroke is null);
+                    var dot = (EllipseGeometry)mark.Data;
+                    Check(dot.RadiusX == 2.5 && dot.RadiusY == 2.5);
+                    Check(dot.Center == new Point(corner is DockCorner.TopRight or DockCorner.BottomRight ? 29 : 7,
+                        corner is DockCorner.BottomLeft or DockCorner.BottomRight ? 29 : 7));
+                    indicator.SetAppearance(false, true, true);
+                    indicator.BeginAnimation(UIElement.OpacityProperty, null); Check(indicator.Opacity == 0);
+                    indicator.SetAppearance(true, false, false);
+                    indicator.BeginAnimation(UIElement.OpacityProperty, null); Check(indicator.Opacity == 1);
+                }
+                indicator.Place(new PixelRect(-10000, -10000, 100, 36), DockEdge.Bottom, 1);
+                Check(((Grid)indicator.Content).Children.OfType<Border>().Single().Background == Brushes.White);
+                foreach (var state in new[] { (Near: false, Over: false, Opacity: 0.38),
+                    (Near: true, Over: false, Opacity: 0.7), (Near: true, Over: true, Opacity: 0.95) })
+                {
+                    indicator.SetAppearance(true, state.Near, state.Over);
+                    indicator.BeginAnimation(UIElement.OpacityProperty, null); Check(indicator.Opacity == state.Opacity);
+                }
+                indicator.SetAppearance(false, false, false);
+                indicator.BeginAnimation(UIElement.OpacityProperty, null); Check(indicator.Opacity == 0);
+                if (previews is not null)
+                {
+                    sheet.Background = Brushes.White;
+                    sheet.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                    sheet.Arrange(new Rect(sheet.DesiredSize));
+                    SavePreview(sheet, Path.Combine(previews, "corner-indicator-contrast.png"));
+                }
+            }
+            finally { indicator.Close(); }
         });
     }
 

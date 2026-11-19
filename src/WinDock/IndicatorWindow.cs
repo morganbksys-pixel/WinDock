@@ -22,10 +22,8 @@ internal sealed class IndicatorWindow : Window
     private double targetOpacity;
     private readonly Path cornerMark = new()
     {
-        Stroke = Brushes.White, StrokeThickness = 3, StrokeStartLineCap = PenLineCap.Round,
-        StrokeEndLineCap = PenLineCap.Round, StrokeLineJoin = PenLineJoin.Round,
+        Fill = new SolidColorBrush(Color.FromRgb(37, 132, 214)),
         Width = 36, Height = 36, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
-        Effect = new DropShadowEffect { Color = Colors.Black, BlurRadius = 5, ShadowDepth = 0, Opacity = 0.85 },
         Visibility = Visibility.Collapsed
     };
 
@@ -62,16 +60,7 @@ internal sealed class IndicatorWindow : Window
         if (layout.Mode == DockPlacementMode.Edge) { Place(area, layout.Edge, scale); return; }
         capsule.Visibility = Visibility.Collapsed;
         cornerMark.Visibility = Visibility.Visible;
-        var geometry = new StreamGeometry();
-        using (var drawing = geometry.Open())
-        {
-            drawing.BeginFigure(new Point(6, 30), false, false);
-            drawing.LineTo(new Point(6, 12), true, false);
-            drawing.QuadraticBezierTo(new Point(6, 6), new Point(12, 6), true, false);
-            drawing.LineTo(new Point(30, 6), true, false);
-        }
-        geometry.Transform = new MatrixTransform(layout.Right ? -1 : 1, 0, 0, layout.Bottom ? -1 : 1,
-            layout.Right ? 36 : 0, layout.Bottom ? 36 : 0);
+        var geometry = new EllipseGeometry(new Point(layout.Right ? 29 : 7, layout.Bottom ? 29 : 7), 2.5, 2.5);
         geometry.Freeze();
         cornerMark.Data = geometry;
         Width = area.Width / scale;
@@ -81,7 +70,8 @@ internal sealed class IndicatorWindow : Window
 
     public void SetAppearance(bool visible, bool near, bool over)
     {
-        var opacity = !visible ? 0 : over ? 0.95 : near ? 0.7 : 0.38;
+        var corner = cornerMark.Visibility == Visibility.Visible;
+        var opacity = !visible ? 0 : corner ? 1 : over ? 0.95 : near ? 0.7 : 0.38;
         if (targetOpacity == opacity) return;
         targetOpacity = opacity;
         DockMotion.SetOpacity(this, opacity);
