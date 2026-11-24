@@ -7,38 +7,38 @@
           <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
           <TabPanel IsItemsHost="True" KeyboardNavigation.TabIndex="1" />
           <Border Grid.Row="1" Margin="0,6,0,0" CornerRadius="10" BorderThickness="1"
-                  Background="White" BorderBrush="#D5DFEA">
+                  Background="{DynamicResource ThemeSurface}" BorderBrush="{DynamicResource ThemeBorder}">
             <ContentPresenter ContentSource="SelectedContent" KeyboardNavigation.TabIndex="2" />
           </Border>
         </Grid>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
     <Style x:Key="SettingsTab" TargetType="TabItem">
-      <Setter Property="Foreground" Value="#35465C" />
+      <Setter Property="Foreground" Value="{DynamicResource ThemeText}" />
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TabItem">
-        <Border x:Name="Surface" Background="#EFF3F9" BorderBrush="#D5DFEA" BorderThickness="1" CornerRadius="8" Margin="0,0,5,2" Padding="11,8">
+        <Border x:Name="Surface" Background="{DynamicResource ThemeRaised}" BorderBrush="{DynamicResource ThemeBorder}" BorderThickness="1" CornerRadius="8" Margin="0,0,5,2" Padding="11,8">
           <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" />
         </Border>
         <ControlTemplate.Triggers>
-          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#E6EEF8" /></Trigger>
-          <Trigger Property="IsSelected" Value="True"><Setter Property="Foreground" Value="#17477D" /><Setter TargetName="Surface" Property="Background" Value="#DDEEFF" /><Setter TargetName="Surface" Property="BorderBrush" Value="#81AFE0" /></Trigger>
-          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#225B96" /></Trigger>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThemeHover}" /></Trigger>
+          <Trigger Property="IsSelected" Value="True"><Setter Property="Foreground" Value="{DynamicResource ThemeAccentText}" /><Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThemeSelected}" /><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThemeFocus}" /></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThemeFocus}" /></Trigger>
         </ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
     <Style x:Key="PositionChoice" TargetType="RadioButton">
-      <Setter Property="Foreground" Value="#263C55" />
+      <Setter Property="Foreground" Value="{DynamicResource ThemeText}" />
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="FontSize" Value="12" />
       <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RadioButton">
-        <Border x:Name="Surface" Background="#FFFFFF" BorderBrush="#BCCDE0" BorderThickness="1" CornerRadius="7" Padding="6,5">
+        <Border x:Name="Surface" Background="{DynamicResource ThemeSurface}" BorderBrush="{DynamicResource ThemeBorder}" BorderThickness="1" CornerRadius="7" Padding="6,5">
           <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Border>
         <ControlTemplate.Triggers>
-          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#E6EEF8" /></Trigger>
-          <Trigger Property="IsChecked" Value="True"><Setter TargetName="Surface" Property="Background" Value="#DDEEFF" /><Setter TargetName="Surface" Property="BorderBrush" Value="#81AFE0" /></Trigger>
-          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#225B96" /></Trigger>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThemeHover}" /></Trigger>
+          <Trigger Property="IsChecked" Value="True"><Setter Property="Foreground" Value="{DynamicResource ThemeAccentText}" /><Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThemeSelected}" /><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThemeFocus}" /></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThemeFocus}" /></Trigger>
           <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5" /></Trigger>
         </ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
@@ -56,12 +56,12 @@
         <ControlTemplate.Triggers>
           <Trigger Property="IsChecked" Value="True"><Setter TargetName="Track" Property="Background" Value="#2C66A5" /><Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" /></Trigger>
           <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5" /></Trigger>
-          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Track" Property="BorderBrush" Value="#225B96" /><Setter TargetName="Track" Property="BorderThickness" Value="1" /></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource ThemeFocus}" /><Setter TargetName="Track" Property="BorderThickness" Value="1" /></Trigger>
         </ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
     <Style TargetType="Button">
-      <Setter Property="Foreground" Value="#F3F4F8" />
+      <Setter Property="Foreground" Value="{DynamicResource ThemeText}" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Cursor" Value="Hand" />
@@ -70,17 +70,17 @@
           <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Border>
         <ControlTemplate.Triggers>
-          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#25FFFFFF" /></Trigger>
-          <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="#40FFFFFF" /></Trigger>
-          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="Background" Value="#365E7C" /></Trigger>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThemeHover}" /></Trigger>
+          <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThemeHover}" /></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThemeSelected}" /></Trigger>
           <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.5" /></Trigger>
         </ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
   <Style x:Key="SettingsActionButton" TargetType="Button">
-    <Setter Property="Foreground" Value="#214773" />
-    <Setter Property="Background" Value="#EAF1FA" />
-    <Setter Property="BorderBrush" Value="#C5D8EE" />
+    <Setter Property="Foreground" Value="{DynamicResource ThemeText}" />
+    <Setter Property="Background" Value="{DynamicResource ThemeRaised}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template"><Setter.Value>
       <ControlTemplate TargetType="Button">
@@ -89,9 +89,9 @@
           <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
         </Border>
         <ControlTemplate.Triggers>
-          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#729BCD" /></Trigger>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThemeFocus}" /></Trigger>
           <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.75" /></Trigger>
-          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#17477D" /></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThemeAccentText}" /></Trigger>
           <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.5" /></Trigger>
         </ControlTemplate.Triggers>
       </ControlTemplate>

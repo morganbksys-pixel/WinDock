@@ -69,8 +69,8 @@ internal sealed class DockPositionPicker : StackPanel
         }
         var screenFrame = new Border
         {
-            Child = screen, CornerRadius = new CornerRadius(12), BorderBrush = new SolidColorBrush(Color.FromRgb(206, 221, 237)),
-            BorderThickness = new Thickness(1), Background = new SolidColorBrush(Color.FromRgb(240, 246, 252))
+            Child = screen, CornerRadius = new CornerRadius(12), BorderBrush = ThemePalette.Border,
+            BorderThickness = new Thickness(1), Background = ThemePalette.Raised
         };
         layoutBody.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
         layoutBody.ColumnDefinitions.Add(new() { Width = new GridLength(0) });

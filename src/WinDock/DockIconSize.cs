@@ -32,7 +32,7 @@ public sealed partial class DockWindow
         var choices = new WrapPanel();
         options.Children.Add(choices);
         var icon = new Image { Source = Icon, Width = settings.IconSize, Height = settings.IconSize };
-        var preview = DockAppearance.Surface(new SolidColorBrush(Color.FromRgb(27, 30, 39)), icon, new Thickness(4));
+        var preview = DockAppearance.Surface(ThemePalette.Surface, icon, new Thickness(4));
         preview.Width = preview.Height = 76;
         preview.Margin = new Thickness(10, 0, 0, 0);
         AutomationProperties.SetName(preview, "Aperçu de la taille des icônes");

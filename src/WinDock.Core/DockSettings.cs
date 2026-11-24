@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace WinDock.Core;
 
+public enum DockTheme { Automatic, Light, Dark }
 public enum DockEdge { Bottom, Top, Left, Right }
 /// <summary>Whether settings were absent, read successfully, or recovered from an invalid file.</summary>
 public enum SettingsLoadStatus { Missing, Loaded, Recovered }
@@ -18,6 +19,8 @@ public enum SettingsLoadStatus { Missing, Loaded, Recovered }
 public sealed record DockEntry(Guid Id, string Path, bool IsSeparator = false, string? DisplayName = null, string? SourcePath = null, string? ApplicationId = null, bool IsGroup = false, Guid? GroupId = null);
 public sealed class DockSettings
 {
+    /// <summary>Preferred appearance, following the Windows app theme by default.</summary>
+    public DockTheme Theme { get; set; } = DockTheme.Automatic;
     public bool AutoHide { get; set; } = true;
     /// <summary>Global shortcut for toggling automatic hiding, or null when disabled.</summary>
     public DockHotkey? AutoHideHotkey { get; set; } = DockHotkey.ToggleAutoHide;
@@ -84,6 +87,7 @@ public sealed class SettingsStore(string path)
                 !EntryRules.IsValid(settings.Entries) ||
                 settings.Entries.Select(e => e.Id).Distinct().Count() != settings.Entries.Count)
                 throw new JsonException("Configuration invalide.");
+            if (!Enum.IsDefined(settings.Theme)) settings.Theme = DockTheme.Automatic;
             if (settings.IconSize is not (36 or 48 or 60)) settings.IconSize = 48;
             settings.HiddenMenuCommands ??= [];
             return settings;

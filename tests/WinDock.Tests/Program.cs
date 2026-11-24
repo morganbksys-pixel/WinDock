@@ -95,6 +95,7 @@ internal static partial class Program
                 RunCornerCoreTests(temporary);
                 RunCornerWindowTests(temporary, args);
                 RunMenuBackgroundTests();
+                RunThemeTest(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
                 RunIconSizeTest(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
                 RunOpenIndicatorTest(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
                 RunCornerOffscreenTests(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
@@ -2009,6 +2010,58 @@ internal static partial class Program
     {
         internal int Calls;
         public Task<PreparedDefaultDock> PrepareAsync(CancellationToken token) { Calls++; return prepare(token); }
+    }
+
+    private static void RunThemeTest(string temporary, string? previews)
+    {
+        Run("Themes update existing surfaces, follow Windows notifications in Auto, and persist explicit choices", () =>
+        {
+            var store = new SettingsStore(Path.Combine(temporary, "theme.json"));
+            var settings = store.Load(out _);
+            var systemDark = false;
+            Check(settings.Theme == DockTheme.Automatic);
+            var dock = new DockWindow(settings, store, new FakeRecycleBin(), readWindowsDarkTheme: () => systemDark);
+            try
+            {
+                var picker = dock.CreateThemePicker();
+                var choices = ((WrapPanel)picker.Children[1]).Children.OfType<RadioButton>().ToArray();
+                var surface = (Border)dock.Content;
+                var background = (SolidColorBrush)surface.Background;
+                var light = background.Color;
+                var preview = new Border { Child = picker, Background = ThemePalette.Surface, Padding = new Thickness(16) };
+                void Capture(string name)
+                {
+                    if (previews is null) return;
+                    preview.Measure(new Size(400, 200));
+                    preview.Arrange(new Rect(0, 0, 400, preview.DesiredSize.Height));
+                    SavePreview(preview, Path.Combine(previews, "theme-" + name + ".png"));
+                }
+                void NotifyWindows()
+                {
+                    typeof(DockWindow).GetMethod("WindowMessage", PrivateInstance)!.Invoke(dock,
+                        new object[] { (nint)0, 0x001A, (nint)0, (nint)0, false });
+                    dock.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+                }
+                choices[1].IsChecked = true;
+                var dark = background.Color;
+                Check((SystemParameters.HighContrast || dark != light) && store.Load(out _).Theme == DockTheme.Dark);
+                Capture("sombre");
+                NotifyWindows();
+                Check(background.Color == dark);
+                choices[0].IsChecked = true;
+                systemDark = true;
+                NotifyWindows();
+                Check(background.Color == light && store.Load(out _).Theme == DockTheme.Light);
+                Capture("clair");
+                choices[2].IsChecked = true;
+                Check(background.Color == dark);
+                systemDark = false;
+                NotifyWindows();
+                Check(background.Color == light && store.Load(out _).Theme == DockTheme.Automatic);
+                Check(background.Opacity == settings.BackgroundOpacity);
+            }
+            finally { dock.Close(); }
+        });
     }
 
     private static void RunIconSizeTest(string temporary, string? previews)

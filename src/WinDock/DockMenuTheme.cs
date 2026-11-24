@@ -8,7 +8,7 @@ namespace WinDock;
 
 internal static class DockMenuTheme
 {
-    internal static void Apply(ContextMenu menu)
+    internal static bool WindowsUsesDarkTheme()
     {
         var dark = false;
         try
@@ -17,7 +17,7 @@ internal static class DockMenuTheme
                 "AppsUseLightTheme", 1) is 0;
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException or SecurityException or System.IO.IOException) { }
-        Apply(menu, dark, SystemParameters.HighContrast);
+        return dark;
     }
 
     internal static void Apply(ContextMenu menu, bool dark, bool highContrast)

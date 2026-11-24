@@ -32,7 +32,7 @@ public sealed partial class DockWindow
             Content = entry.IsGroup ? GroupTile(entry) : entry.IsSeparator ? new Border
             {
                 Width = Horizontal ? 1 : 32, Height = Horizontal ? 32 : 1,
-                Background = new SolidColorBrush(Color.FromArgb(110, 255, 255, 255)),
+                Background = ThemePalette.Divider,
                 CornerRadius = new CornerRadius(0.5)
             } : icon is null
                 ? new TextBlock { Text = "◇", FontSize = 32 }
@@ -93,7 +93,7 @@ public sealed partial class DockWindow
                 Children =
                 {
                     content,
-                    new TextBlock { Text = ManagedShortcuts.Name(entry), Foreground = Brushes.White, FontSize = 11, Width = 74, Height = 30, LineHeight = 15, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 4, 0, 0) }
+                    new TextBlock { Text = ManagedShortcuts.Name(entry), Foreground = ThemePalette.Text, FontSize = 11, Width = 74, Height = 30, LineHeight = 15, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 4, 0, 0) }
                 }
             };
         }
@@ -107,7 +107,7 @@ public sealed partial class DockWindow
         var badge = new Ellipse
         {
             Width = 9, Height = 9, Fill = new SolidColorBrush(Color.FromRgb(65, 218, 119)),
-            Stroke = new SolidColorBrush(Color.FromRgb(27, 30, 39)), StrokeThickness = 1.5,
+            Stroke = ThemePalette.Surface, StrokeThickness = 1.5,
             HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom,
             Margin = new Thickness(0, 0, 1, 1), IsHitTestVisible = false,
             Visibility = visible ? Visibility.Visible : Visibility.Hidden
@@ -128,12 +128,12 @@ public sealed partial class DockWindow
         foreach (var member in settings.Entries.Where(e => e.GroupId == entry.Id).Take(4))
             preview.Children.Add(EntryIcon(member) is { } icon
                 ? new Image { Source = icon, Width = 19, Height = 19, Stretch = Stretch.Uniform }
-                : new TextBlock { Text = "◇", Foreground = Brushes.White, FontSize = 18, TextAlignment = TextAlignment.Center });
+                : new TextBlock { Text = "◇", Foreground = ThemePalette.Text, FontSize = 18, TextAlignment = TextAlignment.Center });
         return new Border
         {
             Width = 48, Height = 48, CornerRadius = new CornerRadius(10),
-            Background = new SolidColorBrush(Color.FromArgb(24, 255, 255, 255)),
-            Child = preview.Children.Count > 0 ? preview : new TextBlock { Text = "▦", Foreground = Brushes.White, FontSize = 30, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
+            Background = ThemePalette.Raised,
+            Child = preview.Children.Count > 0 ? preview : new TextBlock { Text = "▦", Foreground = ThemePalette.Text, FontSize = 30, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
         };
     }
 
