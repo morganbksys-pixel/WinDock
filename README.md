@@ -2,7 +2,7 @@
 
 Vos applications et dossiers favoris, à portée de clic dans un dock discret pour Windows.
 
-**[Télécharger WinDock 0.0.20 — ZIP portable Windows x64](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.20/WinDock-0.0.20-win-x64.zip)**. Quittez WinDock et extrayez le contenu du dossier portable dans `%LocalAppData%\Programs\WinDock`, puis lancez `WinDock.exe`. Pour les mises à jour, gardez ce même emplacement afin que le raccourci de démarrage reste valide.
+**[Installer WinDock 0.0.20 pour Windows x64](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.20/WinDock-0.0.20-Setup-win-x64.exe)**. Lancez le fichier téléchargé. Il installe WinDock pour votre compte dans `%LocalAppData%\Programs\WinDock` et ajoute un raccourci au menu Démarrer.
 
 ![Aperçu du dock par défaut avec navigateur, messagerie, dossiers et corbeille Windows](docs/images/dock.png)
 
@@ -24,7 +24,7 @@ Au premier lancement, WinDock prépare l’Explorateur, votre navigateur, votre 
 
 ## Démarrer en trois étapes
 
-1. **Téléchargez et lancez** `WinDock.exe` depuis un dossier permanent.
+1. **Lancez l’installateur** et choisissez **Lancer WinDock** à la fin. Pour une mise à jour, quittez d’abord le dock puis lancez le nouvel installateur.
 2. **Ajoutez vos applications** avec **Clic droit sur le fond du dock → Ajouter une application…**, ou glissez vos raccourcis sur le dock.
 3. **Personnalisez-le** avec le bouton engrenage **Réglages** dans le dock : bord ou coin, orientation, écran, opacité, masquage automatique et corbeille.
 
