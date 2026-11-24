@@ -41,18 +41,8 @@ public sealed partial class DockWindow
         };
         if (!entry.IsSeparator && !entry.IsGroup)
         {
-            var iconContent = (UIElement)button.Content;
-            button.Content = null;
-            var badge = new Ellipse
-            {
-                Width = 9, Height = 9, Fill = new SolidColorBrush(Color.FromRgb(65, 218, 119)),
-                Stroke = new SolidColorBrush(Color.FromRgb(27, 30, 39)), StrokeThickness = 1.5,
-                HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(0, 0, 1, 1), IsHitTestVisible = false,
-                Visibility = runningEntries.Contains(entry.Id) || missingEntries.Contains(entry.Id) ? Visibility.Visible : Visibility.Hidden
-            };
+            var badge = AttachRunningIndicator(button, runningEntries.Contains(entry.Id) || missingEntries.Contains(entry.Id));
             if (missingEntries.Contains(entry.Id)) badge.Fill = Brushes.Orange;
-            button.Content = new Grid { Width = 48, Height = 48, Children = { iconContent, badge } };
             runningIndicators[entry.Id] = badge;
         }
         AttachMenu(button);
@@ -107,6 +97,22 @@ public sealed partial class DockWindow
             };
         }
         return button;
+    }
+
+    private static Ellipse AttachRunningIndicator(Button button, bool visible)
+    {
+        var iconContent = (UIElement)button.Content;
+        button.Content = null;
+        var badge = new Ellipse
+        {
+            Width = 9, Height = 9, Fill = new SolidColorBrush(Color.FromRgb(65, 218, 119)),
+            Stroke = new SolidColorBrush(Color.FromRgb(27, 30, 39)), StrokeThickness = 1.5,
+            HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(0, 0, 1, 1), IsHitTestVisible = false,
+            Visibility = visible ? Visibility.Visible : Visibility.Hidden
+        };
+        button.Content = new Grid { Width = 48, Height = 48, Children = { iconContent, badge } };
+        return badge;
     }
 
     private ImageSource? EntryIcon(DockEntry entry)

@@ -95,6 +95,7 @@ internal static partial class Program
                 RunCornerCoreTests(temporary);
                 RunCornerWindowTests(temporary, args);
                 RunMenuBackgroundTests();
+                RunOpenIndicatorTest(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
                 RunCornerOffscreenTests(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
                 Console.WriteLine($"{passed} background test groups passed; no windows shown or activated. Interactive tests not run.");
                 return 0;
@@ -2007,6 +2008,38 @@ internal static partial class Program
     {
         internal int Calls;
         public Task<PreparedDefaultDock> PrepareAsync(CancellationToken token) { Calls++; return prepare(token); }
+    }
+
+    private static void RunOpenIndicatorTest(string temporary, string? previews)
+    {
+        Run("Open application shows the green indicator on its first render and retains it when pinned", () =>
+        {
+            var settings = new DockSettings { ShowOpenApplications = true };
+            var windows = new FakeApplicationWindows();
+            windows.OpenWindows.Add(new(1, 10, Path.Combine(Environment.SystemDirectory, "notepad.exe"), null));
+            var window = new DockWindow(settings, new SettingsStore(Path.Combine(temporary, "open-indicator.json")), new FakeRecycleBin(), windows);
+            try
+            {
+                var refresh = (Task)typeof(DockWindow).GetMethod("RefreshRunningAsync", PrivateInstance)!.Invoke(window, null)!;
+                PumpUntil(() => refresh.IsCompleted);
+                refresh.GetAwaiter().GetResult();
+                var surface = (Border)window.Content;
+                var panel = (InsertionPanel)((Viewbox)surface.Child).Child;
+                Button AppTile() => panel.Children.OfType<Button>().Single(b => b != window.SettingsButton);
+                bool GreenDot() => ((Grid)AppTile().Content).Children.OfType<System.Windows.Shapes.Ellipse>().Single() is
+                    { Visibility: Visibility.Visible, Fill: SolidColorBrush brush } && brush.Color == Color.FromRgb(65, 218, 119);
+                Check(settings.Entries.Count == 0 && GreenDot());
+                if (previews is not null)
+                {
+                    surface.Measure(new Size(600, 600));
+                    surface.Arrange(new Rect(new Point(), surface.DesiredSize));
+                    SavePreview(surface, Path.Combine(previews, "open-applications-indicator.png"));
+                }
+                ((MenuItem)AppTile().ContextMenu.Items[0]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Check(settings.Entries.Count == 1 && GreenDot());
+            }
+            finally { window.Close(); }
+        });
     }
 
     private static void SavePreview(FrameworkElement element, string path)

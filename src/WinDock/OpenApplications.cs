@@ -56,6 +56,7 @@ public sealed partial class DockWindow
                 Content = openIcons[entry.Path] is { } icon ? new Image { Source = icon, Width = 48, Height = 48 }
                     : new TextBlock { Text = name[..1], FontSize = 28 }
             };
+            AttachRunningIndicator(button, true);
             AutomationProperties.SetName(button, name + " — application ouverte non épinglée");
             AttachLabel(button, name);
             button.Click += async (_, _) => await OpenEntryAsync(entry, button);
@@ -79,6 +80,7 @@ public sealed partial class DockWindow
                 return;
             }
             shortcuts.Commit(settings, [.. favorites, pinned]);
+            if (!ApplicationIdentityResolver.IsExplorerExecutable(entry.Path)) runningEntries.Add(pinned.Id);
             openApplications = openApplications.Where(e => e != entry).ToArray();
             openSectionFavorites = settings.Entries.ToArray();
             lastRunningCheck = 0;
