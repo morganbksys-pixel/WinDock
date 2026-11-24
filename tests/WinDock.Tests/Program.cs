@@ -24,6 +24,17 @@ internal static partial class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--isolated-cover")
+        {
+            IsolatedDesktop.VerifyWorker(args[1]);
+            var cover = new Window { Topmost = true, Title = "Overlay order test", Width = 200, Height = 200 };
+            cover.Show();
+            var handle = new WindowInteropHelper(cover).Handle;
+            Console.WriteLine(handle);
+            Console.Out.Flush();
+            new Application().Run(cover);
+            return 0;
+        }
         if (args.Length == 2 && args[0] == "--isolated-desktop")
         {
             try { return IsolatedDesktop.Run(args[1]); }

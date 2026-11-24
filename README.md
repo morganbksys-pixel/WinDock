@@ -2,13 +2,13 @@
 
 Vos applications et dossiers favoris, à portée de clic dans un dock discret pour Windows.
 
-**[Tester la bêta 0.0.17 — ZIP portable Windows x64](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.17/WinDock-0.0.17-win-x64.zip)**. Quittez l’ancienne instance, décompressez le ZIP dans un nouveau dossier et lancez `WinDock.exe`.
+**[Tester la bêta 0.0.20 — ZIP portable Windows x64](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.20/WinDock-0.0.20-win-x64.zip)**. Quittez WinDock et extrayez le contenu du dossier portable dans `%LocalAppData%\Programs\WinDock`, puis lancez `WinDock.exe`. Pour les mises à jour, gardez ce même emplacement afin que le raccourci de démarrage reste valide.
 
 ![Aperçu du dock par défaut avec navigateur, messagerie, dossiers et corbeille Windows](docs/images/dock.png)
 
-**[Télécharger WinDock 0.0.17 bêta](https://github.com/morganbksys-pixel/WinDock/releases/tag/v0.0.17)**
+**[Télécharger WinDock 0.0.20 bêta](https://github.com/morganbksys-pixel/WinDock/releases/tag/v0.0.20)**
 
-- **[ZIP portable — WinDock-0.0.17-win-x64.zip](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.17/WinDock-0.0.17-win-x64.zip)** : décompressez-le et gardez tous ses fichiers ensemble. Le runtime .NET est inclus.
+- **[ZIP portable — WinDock-0.0.20-win-x64.zip](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.20/WinDock-0.0.20-win-x64.zip)** : décompressez-le et gardez tous ses fichiers ensemble. Le runtime .NET est inclus.
 
 ## Vos raccourcis, à votre façon
 
@@ -30,9 +30,9 @@ Au premier lancement, WinDock prépare l’Explorateur, votre navigateur, votre 
 
 Même quand le dock est masqué, **Ctrl + Alt + D** bascule le masquage automatique et **Ctrl + Alt + P** ouvre les réglages. Les deux combinaisons peuvent être modifiées ou désactivées dans **Réglages → Clavier**.
 
-En mode **Coin**, un petit point bleu marque le coin physique choisi. Il reste visible à opacité constante tant que le dock est masqué, puis s’estompe à l’ouverture et réapparaît à la fermeture, hors plein écran. Survolez-le pendant **300 ms** pour retrouver le dock ; sa première icône reste près du coin et les suivantes se déploient vers l’intérieur. Le dock ouvert évite la barre des tâches, et le passage entre le repère et les icônes le maintient visible. Les placements existants sont conservés lors d’une mise à jour.
+En mode **Coin**, un petit point bleu marque le coin choisi de la zone disponible, hors de la barre des tâches Windows. En bas, il se place donc au-dessus de celle-ci. Le point et sa zone d’activation se repositionnent automatiquement lorsque la barre des tâches est déplacée ou redimensionnée. Il reste visible à opacité constante tant que le dock est masqué, puis s’estompe à l’ouverture et réapparaît à la fermeture, hors plein écran. Si une application recouvre le repère ou le dock, WinDock le ramène devant elle sans prendre le focus. Survolez-le pendant **300 ms** pour retrouver le dock ; sa première icône reste près du coin et les suivantes se déploient vers l’intérieur. Le dock ouvert évite la barre des tâches, et le passage entre le repère et les icônes le maintient visible. Les placements existants sont conservés lors d’une mise à jour.
 
-Près des boutons de fenêtre, activez **Réglages → Emplacement → Coin → Exiger le coin exact** : seule l’extrémité du coin révèle le dock, après les mêmes 300 ms. Survoler le reste du repère ne l’ouvre plus.
+Près des boutons de fenêtre, activez **Réglages → Emplacement → Coin → Exiger le coin exact** : visez le **point bleu pendant 300 ms**. Une petite zone précise englobe le point et l’extrémité du coin de la zone disponible, en suivant le zoom de l’écran. Survoler le reste du repère ne l’ouvre plus. Si la barre des tâches se masque automatiquement, le point suit la zone disponible signalée par Windows, qui peut alors aller jusqu’au bord de l’écran.
 
 Pour retourner la rangée en mode **Coin**, activez **Réglages → Emplacement → Coin → Inverser l’ordre des icônes**. Les séparateurs, les tuiles de groupes et la corbeille changent aussi de côté ; l’intérieur des groupes garde son ordre. Ce choix est mémorisé pour tous les coins et orientations, sans modifier l’ordre du mode Bord.
 

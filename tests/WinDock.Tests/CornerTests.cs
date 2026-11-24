@@ -55,7 +55,7 @@ internal static partial class Program
             }
             Check(Directory.GetFiles(temporary, "corner-settings.json.invalid-*").Length == 3);
         });
-        Run("Corner docks use physical triggers and available work areas at every corner, axis and DPI", () =>
+        Run("Corner docks and triggers stay in the available work area at every corner, axis and DPI", () =>
         {
             foreach (var scale in new[] { 1.0, 1.25, 1.5, 2.0 })
             foreach (var layout in CornerLayouts())
@@ -72,9 +72,10 @@ internal static partial class Program
                 Check(layout.Right ? p.Window.Right == work.Right - 8 * scale : p.Window.X == work.X + 8 * scale);
                 Check(layout.Bottom ? p.Window.Bottom == work.Bottom - 8 * scale : p.Window.Y == work.Y + 8 * scale);
                 Check(p.Trigger.Width == 36 * scale && p.Trigger.Height == 36 * scale);
-                Check(p.Trigger == DockGeometry.Calculate(bounds, bounds, layout, 100, 78, scale).Trigger);
-                Check(layout.Right ? p.Trigger.Right == bounds.Right : p.Trigger.X == bounds.X);
-                Check(layout.Bottom ? p.Trigger.Bottom == bounds.Bottom : p.Trigger.Y == bounds.Y);
+                Check(p.Trigger == DockGeometry.IndicatorArea(bounds, work, layout, scale));
+                Check(p.Trigger.X >= work.X && p.Trigger.Y >= work.Y && p.Trigger.Right <= work.Right && p.Trigger.Bottom <= work.Bottom);
+                Check(layout.Right ? p.Trigger.Right == work.Right : p.Trigger.X == work.X);
+                Check(layout.Bottom ? p.Trigger.Bottom == work.Bottom : p.Trigger.Y == work.Y);
                 var oversized = DockGeometry.Calculate(bounds, work, layout, 10000, 10000, scale);
                 Check(oversized.Window.Width == work.Width - 16 * scale && oversized.Window.Height == work.Height - 16 * scale);
                 var group = GroupGeometry.Place(work, p.Window, layout.EffectiveEdge, 340 * scale, 250 * scale, scale);
@@ -98,6 +99,7 @@ internal static partial class Program
     private static void RunCornerWindowTests(string temporary, string[] args)
     {
         RunIndicatorAppearanceTests(args);
+        RunWorkAreaWindowTests(temporary);
         RunReverseIconOrderWindowTests(temporary);
         Run("Corner dwell cancels on departure and preserves fixed, fullscreen and hide delays", () =>
         {
@@ -391,7 +393,7 @@ internal static partial class Program
             var exact = VisualChildren(picker).OfType<CheckBox>().Single(c => AutomationProperties.GetName(c) == "Exiger le coin exact");
             exact.IsChecked = true; Arrange();
             Check(settings.RequireExactCorner && exact.Focusable);
-            Check(VisualChildren(picker).OfType<TextBlock>().Any(t => t.Text.Contains("tout au bout du coin")));
+            Check(VisualChildren(picker).OfType<TextBlock>().Any(t => t.Text.Contains("Visez le point bleu")));
             exact.IsChecked = false; Arrange();
             Check(!settings.RequireExactCorner && VisualChildren(picker).OfType<TextBlock>().Any(t => t.Text.Contains("Survolez le repère")));
             exact.IsChecked = true; Arrange();

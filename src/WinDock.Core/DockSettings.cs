@@ -29,13 +29,13 @@ public sealed class DockSettings
     public DockEdge Edge { get; set; } = DockEdge.Bottom;
     /// <summary>Whether the dock is centered on an edge or anchored to a corner.</summary>
     public DockPlacementMode PlacementMode { get; set; } = DockPlacementMode.Edge;
-    /// <summary>Physical monitor corner used in corner mode.</summary>
+    /// <summary>Available work-area corner used in corner mode.</summary>
     public DockCorner Corner { get; set; } = DockCorner.BottomRight;
     /// <summary>Direction of the dock's main axis in corner mode.</summary>
     public DockOrientation Orientation { get; set; } = DockOrientation.Horizontal;
     /// <summary>Reverses the entire root icon row in corner mode, retaining the stored entry order.</summary>
     public bool ReverseIconOrder { get; set; }
-    /// <summary>Restricts corner activation to its outermost two physical pixels on both axes.</summary>
+    /// <summary>Restricts activation to a compact area enclosing the visible dot and work-area corner.</summary>
     public bool RequireExactCorner { get; set; }
     /// <summary>Resolved layout, independent of WPF and desktop coordinates.</summary>
     [JsonIgnore]

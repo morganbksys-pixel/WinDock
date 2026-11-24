@@ -113,7 +113,7 @@ internal sealed class DockPositionPicker : StackPanel
         {
             Content = new TextBlock { Text = "Exiger le coin exact", TextWrapping = TextWrapping.Wrap },
             IsChecked = settings.RequireExactCorner, Foreground = DockSettingsView.Ink, Margin = new Thickness(0, 14, 0, 0),
-            ToolTip = "Placez la souris tout au bout du coin pendant 300 ms pour ouvrir le dock."
+            ToolTip = "Visez le point bleu ou l’extrémité du coin de la zone disponible pendant 300 ms pour ouvrir le dock."
         };
         AutomationProperties.SetName(exactCorner, "Exiger le coin exact");
         exactCorner.SetResourceReference(StyleProperty, "SettingsSwitch");
@@ -186,7 +186,7 @@ internal sealed class DockPositionPicker : StackPanel
         var direction = horizontal ? layout.Right ? "Vers la gauche" : "Vers la droite" : layout.Bottom ? "Vers le haut" : "Vers le bas";
         summary.Text = cornerMode ? $"{position} · {(horizontal ? "Horizontal" : "Vertical")} · {direction}\n" +
             (settings.ReverseIconOrder ? "Ordre inversé\n" : "Ordre normal\n") +
-            (!settings.AutoHide ? "Dock toujours visible, sauf en plein écran." : settings.RequireExactCorner ? "Placez la souris tout au bout du coin pendant 300 ms." : "Survolez le repère du coin pendant 300 ms.")
+            (!settings.AutoHide ? "Dock toujours visible, sauf en plein écran." : settings.RequireExactCorner ? "Visez le point bleu pendant 300 ms." : "Survolez le repère du coin pendant 300 ms.")
             : $"Bord {position.ToLowerInvariant()} · Dock centré";
     }
 }

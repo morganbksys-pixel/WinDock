@@ -2,7 +2,7 @@ namespace WinDock.Core;
 
 /// <summary>Available dock anchor families.</summary>
 public enum DockPlacementMode { Edge, Corner }
-/// <summary>Physical corners of the selected monitor.</summary>
+/// <summary>Corners of the selected monitor's available work area.</summary>
 public enum DockCorner { TopLeft, TopRight, BottomLeft, BottomRight }
 /// <summary>Main axis of a corner dock.</summary>
 public enum DockOrientation { Horizontal, Vertical }

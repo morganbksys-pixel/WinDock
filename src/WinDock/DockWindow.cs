@@ -16,6 +16,7 @@ public sealed partial class DockWindow : Window
 {
     private const string DragFormat = "WinDock.EntryId";
     private readonly DockSettings settings;
+    private readonly Func<List<Display>> getDisplays;
     private readonly SettingsStore store;
     private readonly InsertionPanel items = new();
     private readonly Viewbox fittedItems = new() { Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly };
@@ -25,6 +26,8 @@ public sealed partial class DockWindow : Window
     private Display? display;
     private DockPlacement placement;
     private long triggerSince, outsideSince, lastDisplayCheck;
+    private long nextOrderCheck;
+    private nint lastOverlay;
     private bool revealed = true, dragging, externalDrag;
     private int interactionLocks;
     private Point dragStart;
@@ -69,11 +72,13 @@ public sealed partial class DockWindow : Window
 
     internal DockWindow(DockSettings settings, SettingsStore store, IRecycleBinService recycleBin,
         IApplicationWindows? applicationWindows = null, IDefaultDockService? defaultDock = null,
-        IExplorerRestarter? explorerRestarter = null, Func<bool>? confirmExplorerRestart = null)
+        IExplorerRestarter? explorerRestarter = null, Func<bool>? confirmExplorerRestart = null,
+        Func<List<Display>>? getDisplays = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(store);
         this.settings = settings;
+        this.getDisplays = getDisplays ?? Native.Displays;
         this.store = store;
         this.recycleBin = recycleBin;
         this.applicationWindows = applicationWindows ?? new ApplicationWindows();
@@ -153,7 +158,7 @@ public sealed partial class DockWindow : Window
     private void RefreshPlacement()
     {
         var previousDisplay = display;
-        var displays = Native.Displays();
+        var displays = getDisplays();
         display = displays.FirstOrDefault(d => d.Device == settings.MonitorDevice)
             ?? displays.FirstOrDefault(d => d.Primary) ?? displays.FirstOrDefault();
         if (placedLayout != settings.Layout || display != previousDisplay) triggerSince = outsideSince = 0;
@@ -216,6 +221,18 @@ public sealed partial class DockWindow : Window
         UpdateVisibility(fullScreen, overTrigger,
             overIndicator || DockGeometry.ContainsInteraction(placement, settings.Layout, display.Scale, pointer.X, pointer.Y), now);
         indicator?.SetAppearance(settings.AutoHide && !revealed && !fullScreen, nearIndicator, overTrigger);
+        if (fullScreen || interactionLocks > 0 || dragging || externalDrag || indicator is null)
+        {
+            lastOverlay = 0;
+            return;
+        }
+        var overlay = revealed ? hwnd : new WindowInteropHelper(indicator).Handle;
+        if (overlay != 0 && (overlay != lastOverlay || now >= nextOrderCheck))
+        {
+            Native.RestoreOverlayOrder(overlay, revealed ? placement.Window : indicatorArea);
+            lastOverlay = overlay;
+            nextOrderCheck = now + 250;
+        }
     }
 
     internal void UpdateVisibility(bool fullScreen, bool overTrigger, bool overDock, long now)

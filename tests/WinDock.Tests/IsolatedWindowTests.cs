@@ -15,6 +15,40 @@ internal static partial class Program
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
         app.Resources = new ResourceDictionary { Source = new Uri("/WinDock;component/Styles.xaml", UriKind.Relative) };
+        Run("A covered indicator and dock recover above another process without taking focus", () =>
+        {
+            var settings = new DockSettings { PlacementMode = DockPlacementMode.Corner, Corner = DockCorner.TopRight };
+            var dock = new DockWindow(settings, new SettingsStore(Path.Combine(temporary, "covered.json")), new FakeRecycleBin());
+            try
+            {
+                dock.Show();
+                PumpUntil(() => dock.OwnedWindows.OfType<IndicatorWindow>().Any());
+                ((DispatcherTimer)typeof(DockWindow).GetField("timer", PrivateInstance)!.GetValue(dock)!).Stop();
+                var indicator = new WindowInteropHelper(dock.OwnedWindows.OfType<IndicatorWindow>().Single()).Handle;
+                var dockHandle = new WindowInteropHelper(dock).Handle;
+                using var process = Process.Start(new ProcessStartInfo(Path.Combine(AppContext.BaseDirectory, "WinDock.Tests.exe"))
+                {
+                    UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true,
+                    ArgumentList = { "--isolated-cover", desktop }
+                })!;
+                try
+                {
+                    var line = process.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(10)).GetAwaiter().GetResult();
+                    var cover = nint.Parse(line!);
+                    IsolatedDesktop.VerifyWindow(cover, desktop);
+                    var area = Native.Displays().First(d => d.Primary).Work;
+                    Native.Position(cover, area);
+                    var foreground = Native.GetForegroundWindow();
+                    Check(IsAbove(cover, indicator) && IsAbove(cover, dockHandle));
+                    Native.RestoreOverlayOrder(indicator, area);
+                    Check(IsAbove(indicator, cover) && Native.GetForegroundWindow() == foreground);
+                    Native.RestoreOverlayOrder(dockHandle, area);
+                    Check(IsAbove(dockHandle, cover) && Native.GetForegroundWindow() == foreground);
+                }
+                finally { process.Kill(); process.WaitForExit(); }
+            }
+            finally { dock.Close(); }
+        });
         Run("Real menu HWNDs stay above the dock during periodic positioning on twelve isolated layouts", () =>
         {
             foreach (var layout in AllLayouts())

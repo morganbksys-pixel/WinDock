@@ -43,6 +43,12 @@ internal static class Native
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)] public string TypeName;
     }
     private delegate bool MonitorCallback(nint monitor, nint dc, nint rect, nint data);
+    private delegate bool WindowCallback(nint window, nint data);
+    [DllImport("user32.dll")] private static extern bool EnumWindows(WindowCallback callback, nint data);
+    [DllImport("user32.dll")] private static extern bool IsWindowVisible(nint window);
+    [DllImport("user32.dll")] private static extern bool IsIconic(nint window);
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(nint window, out int processId);
+    [DllImport("dwmapi.dll")] private static extern int DwmGetWindowAttribute(nint window, int attribute, out int value, int size);
     [DllImport("user32.dll")] private static extern bool EnumDisplayMonitors(nint dc, nint clip, MonitorCallback callback, nint data);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool GetMonitorInfo(nint monitor, ref MonitorInfo info);
     [DllImport("shcore.dll")] private static extern int GetDpiForMonitor(nint monitor, int type, out uint x, out uint y);
@@ -92,6 +98,26 @@ internal static class Native
     // The same placement operation can be exercised against a simulated desktop without creating HWNDs.
     internal static void Position(nint hwnd, PixelRect rect, WindowPositioner position) => position(hwnd, 0,
         (int)Math.Round(rect.X), (int)Math.Round(rect.Y), (int)Math.Round(rect.Width), (int)Math.Round(rect.Height), 0x0014); // SWP_NOZORDER | SWP_NOACTIVATE
+
+    internal static void RestoreOverlayOrder(nint overlay, PixelRect area)
+    {
+        // Stop at the overlay. Only windows above it can obscure the visible surface.
+        var covered = false;
+        EnumWindows((window, _) =>
+        {
+            if (window == overlay) return false;
+            if (!IsWindowVisible(window) || IsIconic(window) || !GetWindowRect(window, out var rect)
+                || rect.Left >= area.Right || rect.Right <= area.X || rect.Top >= area.Bottom || rect.Bottom <= area.Y)
+                return true;
+            GetWindowThreadProcessId(window, out var processId);
+            if (processId == Environment.ProcessId) return true;
+            if (DwmGetWindowAttribute(window, 14, out var cloaked, sizeof(int)) == 0 && cloaked != 0) return true;
+            covered = true;
+            return false;
+        }, 0);
+        if (covered)
+            SetWindowPos(overlay, -1, 0, 0, 0, 0, 0x0013); // HWND_TOPMOST, NOSIZE | NOMOVE | NOACTIVATE
+    }
 
     public static bool FullScreen(Display display, nint ownWindow)
     {

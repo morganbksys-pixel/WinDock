@@ -15,7 +15,7 @@ public static class DockGeometry
     /// <param name="placement">Physical dock and edge trigger bounds.</param>
     /// <param name="indicator">Physical indicator bounds.</param>
     /// <param name="layout">Resolved anchor and orientation.</param>
-    /// <param name="requireExactCorner">Whether to require the extreme two physical pixels of the corner.</param>
+    /// <param name="requireExactCorner">Whether to restrict activation to the visible dot and work-area corner.</param>
     /// <param name="x">Physical cursor X coordinate.</param>
     /// <param name="y">Physical cursor Y coordinate.</param>
     /// <returns>Whether the cursor should begin or continue the reveal delay.</returns>
@@ -24,14 +24,16 @@ public static class DockGeometry
         if (layout.Mode == DockPlacementMode.Edge)
             return indicator.Contains(x, y) || placement.Trigger.Contains(x, y);
         if (!requireExactCorner) return indicator.Contains(x, y);
-        var width = Math.Min(2, indicator.Width);
-        var height = Math.Min(2, indicator.Height);
+        // The 36-DIP indicator draws the dot 7 DIPs from the corner, with a 2.5-DIP radius.
+        // Include the whole dot and the corner in a compact 10-DIP target at the same DPI.
+        var width = indicator.Width * 10 / 36;
+        var height = indicator.Height * 10 / 36;
         var exactCorner = new PixelRect(layout.Right ? indicator.Right - width : indicator.X,
             layout.Bottom ? indicator.Bottom - height : indicator.Y, width, height);
         return exactCorner.Contains(x, y);
     }
 
-    /// <summary>Places the indicator on a work-area edge or at the physical monitor corner.</summary>
+    /// <summary>Places the indicator on an edge or in a corner of the available work area.</summary>
     /// <param name="bounds">Physical monitor bounds.</param>
     /// <param name="work">Available monitor work area.</param>
     /// <param name="layout">Resolved anchor and orientation.</param>
@@ -40,12 +42,12 @@ public static class DockGeometry
     public static PixelRect IndicatorArea(PixelRect bounds, PixelRect work, DockLayout layout, double scale)
     {
         if (layout.Mode == DockPlacementMode.Edge) return IndicatorArea(work, layout.Edge, scale);
-        var width = Math.Min(bounds.Width, 36 * scale);
-        var height = Math.Min(bounds.Height, 36 * scale);
-        return new(layout.Right ? bounds.Right - width : bounds.X, layout.Bottom ? bounds.Bottom - height : bounds.Y, width, height);
+        var width = Math.Min(work.Width, 36 * scale);
+        var height = Math.Min(work.Height, 36 * scale);
+        return new(layout.Right ? work.Right - width : work.X, layout.Bottom ? work.Bottom - height : work.Y, width, height);
     }
 
-    /// <summary>Anchors a dock inside its work area while corner activation uses the physical monitor bounds.</summary>
+    /// <summary>Anchors the dock and its activation area inside the available work area.</summary>
     /// <param name="bounds">Physical monitor bounds.</param>
     /// <param name="work">Available monitor work area.</param>
     /// <param name="layout">Resolved anchor and orientation.</param>
