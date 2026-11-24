@@ -17,9 +17,27 @@ public sealed partial class DockWindow
         RefreshGroupPanel();
     }
 
+    private DockPanel CreateAppearancePickers()
+    {
+        var panel = new DockPanel();
+        var theme = CreateThemePicker();
+        DockPanel.SetDock(theme, Dock.Top);
+        panel.Children.Add(theme);
+        panel.Children.Add(CreateIconSizePicker());
+        panel.SizeChanged += (_, e) =>
+        {
+            if (!e.WidthChanged) return;
+            var wide = e.NewSize.Width >= 500;
+            DockPanel.SetDock(theme, wide ? Dock.Left : Dock.Top);
+            theme.Width = wide ? e.NewSize.Width * 0.45 - 12 : double.NaN;
+            theme.Margin = new Thickness(0, 0, wide ? 12 : 0, 10);
+        };
+        return panel;
+    }
+
     internal Grid CreateIconSizePicker()
     {
-        var panel = new Grid { Margin = new Thickness(0, 0, 0, 18) };
+        var panel = new Grid { Margin = new Thickness(0, 0, 0, 10) };
         panel.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
         panel.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         var options = new StackPanel { VerticalAlignment = VerticalAlignment.Center };

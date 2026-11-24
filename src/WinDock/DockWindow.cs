@@ -876,16 +876,15 @@ public sealed partial class DockWindow : Window
         var monitorPicker = new ComboBox { ItemsSource = displays.Select(d => d.Label), SelectedIndex = Math.Max(0, displays.FindIndex(d => d.Device == display?.Device)), Margin = new Thickness(0, 6, 0, 0) };
         panel.Children.Add(monitorPicker);
         panel = view.AppearancePanel;
-        panel.Children.Add(CreateThemePicker());
-        panel.Children.Add(CreateIconSizePicker());
-        panel.Children.Add(new TextBlock { Text = "Visibilité et contenu", Foreground = DockSettingsView.Ink, FontSize = 18, Margin = new Thickness(0, 0, 0, 12) });
-        var autoHideToggle = new CheckBox { Content = "Masquage automatique", IsChecked = settings.AutoHide, Foreground = DockSettingsView.Ink, Margin = new Thickness(0, 0, 0, 16) };
+        panel.Children.Add(CreateAppearancePickers());
+        panel.Children.Add(new TextBlock { Text = "Visibilité et contenu", Foreground = DockSettingsView.Ink, FontSize = 18, Margin = new Thickness(0, 0, 0, 6) });
+        var autoHideToggle = new CheckBox { Content = "Masquage automatique", IsChecked = settings.AutoHide, Foreground = DockSettingsView.Ink, Margin = new Thickness(0, 0, 0, 6) };
         autoHideToggle.SetResourceReference(StyleProperty, "SettingsSwitch");
         settingsAutoHideToggle = autoHideToggle;
         autoHideToggle.Click += (_, _) => SetAutoHide(autoHideToggle.IsChecked == true);
         panel.Children.Add(autoHideToggle);
-        panel.Children.Add(new TextBlock { Text = "Sans masquage automatique, le dock reste visible sauf en plein écran.", TextWrapping = TextWrapping.Wrap, Foreground = DockSettingsView.Muted, Margin = new Thickness(0, 0, 0, 16) });
-        var recycleToggle = new CheckBox { Content = "Afficher la corbeille", IsChecked = settings.ShowRecycleBin, Foreground = DockSettingsView.Ink, Margin = new Thickness(0, 0, 0, 20) };
+        panel.Children.Add(new TextBlock { Text = "Sans masquage automatique, le dock reste visible sauf en plein écran.", TextWrapping = TextWrapping.Wrap, Foreground = DockSettingsView.Muted, Margin = new Thickness(0, 0, 0, 6) });
+        var recycleToggle = new CheckBox { Content = "Afficher la corbeille", IsChecked = settings.ShowRecycleBin, Foreground = DockSettingsView.Ink, Margin = new Thickness(0, 0, 0, 8) };
         settingsRecycleToggle = recycleToggle;
         recycleToggle.SetResourceReference(StyleProperty, "SettingsSwitch");
         recycleToggle.Click += async (_, _) =>
@@ -897,7 +896,7 @@ public sealed partial class DockWindow : Window
         var openToggle = new CheckBox
         {
             Content = "Afficher les applications ouvertes non épinglées", IsChecked = settings.ShowOpenApplications,
-            Foreground = DockSettingsView.Ink, Margin = new Thickness(0, 0, 0, 16)
+            Foreground = DockSettingsView.Ink, Margin = new Thickness(0, 0, 0, 6)
         };
         openToggle.SetResourceReference(StyleProperty, "SettingsSwitch");
         openToggle.Click += (_, _) =>
@@ -914,7 +913,7 @@ public sealed partial class DockWindow : Window
         {
             Minimum = 10, Maximum = 100, Value = settings.BackgroundOpacity * 100,
             TickFrequency = 1, IsSnapToTickEnabled = true,
-            Margin = new Thickness(0, 8, 0, 20), ToolTip = "Transparence du fond uniquement"
+            Margin = new Thickness(0, 6, 0, 6), ToolTip = "Transparence du fond uniquement"
         };
         panel.Children.Add(opacitySlider);
         panel.Children.Add(new TextBlock { Text = "Les icônes restent opaques.", TextWrapping = TextWrapping.Wrap, Foreground = DockSettingsView.Muted });
