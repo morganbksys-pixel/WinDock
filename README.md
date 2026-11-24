@@ -2,11 +2,11 @@
 
 Vos applications et dossiers favoris, à portée de clic dans un dock discret pour Windows.
 
-**[Tester la bêta 0.0.20 — ZIP portable Windows x64](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.20/WinDock-0.0.20-win-x64.zip)**. Quittez WinDock et extrayez le contenu du dossier portable dans `%LocalAppData%\Programs\WinDock`, puis lancez `WinDock.exe`. Pour les mises à jour, gardez ce même emplacement afin que le raccourci de démarrage reste valide.
+**[Télécharger WinDock 0.0.20 — ZIP portable Windows x64](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.20/WinDock-0.0.20-win-x64.zip)**. Quittez WinDock et extrayez le contenu du dossier portable dans `%LocalAppData%\Programs\WinDock`, puis lancez `WinDock.exe`. Pour les mises à jour, gardez ce même emplacement afin que le raccourci de démarrage reste valide.
 
 ![Aperçu du dock par défaut avec navigateur, messagerie, dossiers et corbeille Windows](docs/images/dock.png)
 
-**[Télécharger WinDock 0.0.20 bêta](https://github.com/morganbksys-pixel/WinDock/releases/tag/v0.0.20)**
+**[Notes de version de WinDock 0.0.20](https://github.com/morganbksys-pixel/WinDock/releases/tag/v0.0.20)**
 
 - **[ZIP portable — WinDock-0.0.20-win-x64.zip](https://github.com/morganbksys-pixel/WinDock/releases/download/v0.0.20/WinDock-0.0.20-win-x64.zip)** : décompressez-le et gardez tous ses fichiers ensemble. Le runtime .NET est inclus.
 
