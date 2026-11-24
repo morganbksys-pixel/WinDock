@@ -14,9 +14,9 @@ internal static class DockLabels
         {
             Content = new Border
             {
-                Background = new SolidColorBrush(Color.FromRgb(27, 30, 39)), CornerRadius = new CornerRadius(8),
+                Background = ThemePalette.Surface, CornerRadius = new CornerRadius(8),
                 Padding = new Thickness(10, 6, 10, 6),
-                Child = new TextBlock { Text = text, Foreground = Brushes.White, FontSize = 12,
+                Child = new TextBlock { Text = text, Foreground = ThemePalette.Text, FontSize = 12,
                     TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap, MaxWidth = 260 }
             },
             Background = Brushes.Transparent, BorderThickness = new Thickness(0), Padding = new Thickness(0),

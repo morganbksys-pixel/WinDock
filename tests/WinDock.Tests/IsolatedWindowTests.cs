@@ -117,6 +117,23 @@ internal static partial class Program
                             Check(view.CloseButton.IsVisible && !dialog.Topmost);
                         }
                         view.SelectPage("Apparence"); dialog.UpdateLayout();
+                        var appearancePage = (ScrollViewer)((TabItem)view.Tabs.SelectedItem).Content;
+                        var pickers = (DockPanel)view.AppearancePanel.Children[0];
+                        var theme = (FrameworkElement)pickers.Children[0];
+                        var size = (FrameworkElement)pickers.Children[1];
+                        var originalWidth = dialog.Width;
+                        foreach (var width in new[] { 600d, 520d, originalWidth })
+                        {
+                            dialog.Width = width;
+                            dialog.UpdateLayout();
+                            var position = size.TranslatePoint(new Point(), pickers);
+                            if (pickers.ActualWidth >= 500)
+                            {
+                                Check(position.X >= theme.ActualWidth && position.Y < 1);
+                                if (dialog.ActualHeight >= 600) Check(appearancePage.ScrollableHeight <= 1);
+                            }
+                            else Check(position.X < 1 && position.Y >= theme.ActualHeight);
+                        }
                         var autoHide = view.AppearancePanel.Children.OfType<CheckBox>().Single(c => Equals(c.Content, "Masquage automatique"));
                         autoHide.IsChecked = true; autoHide.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));
                         var recycle = view.AppearancePanel.Children.OfType<CheckBox>().Single(c => Equals(c.Content, "Afficher la corbeille"));

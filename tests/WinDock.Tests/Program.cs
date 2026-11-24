@@ -79,7 +79,8 @@ internal static partial class Program
         }
         if (args.Length == 3 && args[0] == "--record")
         {
-            File.WriteAllText(args[1], Environment.CurrentDirectory + "|" + args[2]);
+            File.WriteAllText(args[1] + ".tmp", Environment.CurrentDirectory + "|" + args[2]);
+            File.Move(args[1] + ".tmp", args[1], true);
             return 0;
         }
         var temporary = Path.Combine(Path.GetTempPath(), "WinDock.Tests-" + Guid.NewGuid());
@@ -94,6 +95,9 @@ internal static partial class Program
                 RunCornerCoreTests(temporary);
                 RunCornerWindowTests(temporary, args);
                 RunMenuBackgroundTests();
+                RunThemeTest(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
+                RunIconSizeTest(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
+                RunOpenIndicatorTest(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
                 RunCornerOffscreenTests(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
                 Console.WriteLine($"{passed} background test groups passed; no windows shown or activated. Interactive tests not run.");
                 return 0;
@@ -685,6 +689,43 @@ internal static partial class Program
             RunContextualMenuTests(temporary, args);
             RunDockKeyboardTests(temporary, args);
             RunExplorerRestartWindowTests(temporary, args);
+            Run("Open apps exclude grouped favorites, disappear on close and can be pinned exactly once", () =>
+            {
+                var group = new DockEntry(Guid.NewGuid(), "", DisplayName: "Outils", IsGroup: true);
+                var member = new DockEntry(Guid.NewGuid(), ApplicationIdentityResolver.ExplorerExecutable, GroupId: group.Id);
+                var second = new DockEntry(Guid.NewGuid(), temporary, GroupId: group.Id);
+                var settings = new DockSettings { AutoHide = false, ShowOpenApplications = true, Entries = [group, member, second] };
+                var store = new SettingsStore(Path.Combine(temporary, "open-apps.json"));
+                var windows = new FakeApplicationWindows();
+                var executable = Path.Combine(Environment.SystemDirectory, "notepad.exe");
+                windows.OpenWindows.AddRange([new(1, 10, member.Path, null), new(2, 11, executable, null),
+                    new(3, 12, executable.ToUpperInvariant(), null)]);
+                var window = new DockWindow(settings, store, new FakeRecycleBin(), windows);
+                window.Show();
+                try
+                {
+                    var panel = (StackPanel)((Viewbox)((Border)window.Content).Child).Child;
+                    Button? TemporaryTile() => panel.Children.OfType<Button>().SingleOrDefault(b =>
+                        b.ContextMenu?.Items.OfType<MenuItem>().Any(i => Equals(i.Header, "Épingler au dock")) == true);
+                    PumpUntil(() => TemporaryTile() != null);
+                    Check(settings.Entries.Count == 3);
+                    if (args.Length == 2 && args[0] == "--preview")
+                    {
+                        Directory.CreateDirectory(args[1]);
+                        SavePreview(window, Path.Combine(args[1], "open-applications.png"));
+                    }
+                    windows.OpenWindows.Clear();
+                    PumpUntil(() => TemporaryTile() == null);
+                    windows.OpenWindows.Add(new(4, 13, executable, null));
+                    PumpUntil(() => TemporaryTile() != null);
+                    ((MenuItem)TemporaryTile()!.ContextMenu.Items[0]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    PumpUntil(() => TemporaryTile() == null);
+                    var saved = store.Load(out _);
+                    Check(saved.ShowOpenApplications && saved.Entries.Count == 4 && saved.Entries[^1].Path == executable);
+                    Check(OpenApplications.Unpinned(windows.OpenWindows, saved.Entries).Count == 0);
+                }
+                finally { window.Close(); }
+            });
             Run("Settings restoration previews the exact selection and supports cancellation and confirmation", () =>
             {
                 var root = Path.Combine(temporary, "defaults-ui"); var sources = CreateDefaultSources(root);
@@ -1389,6 +1430,13 @@ internal static partial class Program
                     var button = panel.Children.OfType<Button>().Single(b => b.Tag is DockEntry);
                     var menu = button.ContextMenu;
                     menu.PlacementTarget = button;
+                    // Menu updates intentionally wait while the pointer is over a row.
+                    // Place this test popup away from the pointer without moving the user's mouse.
+                    var work = SystemParameters.WorkArea;
+                    Native.GetCursorPos(out var pointer);
+                    var cursor = window.PointFromScreen(new Point(pointer.X, pointer.Y));
+                    menu.Placement = System.Windows.Controls.Primitives.PlacementMode.RelativePoint;
+                    menu.HorizontalOffset = cursor.X < window.ActualWidth / 2 ? work.Width / 3 : -work.Width / 3;
                     var closeRow = (MenuItem)menu.Items[^1];
                     bool HasClose() => closeRow.Visibility == Visibility.Visible;
                     menu.IsOpen = true;
@@ -1964,6 +2012,132 @@ internal static partial class Program
         public Task<PreparedDefaultDock> PrepareAsync(CancellationToken token) { Calls++; return prepare(token); }
     }
 
+    private static void RunThemeTest(string temporary, string? previews)
+    {
+        Run("Themes update existing surfaces, follow Windows notifications in Auto, and persist explicit choices", () =>
+        {
+            var store = new SettingsStore(Path.Combine(temporary, "theme.json"));
+            var settings = store.Load(out _);
+            var systemDark = false;
+            Check(settings.Theme == DockTheme.Automatic);
+            var dock = new DockWindow(settings, store, new FakeRecycleBin(), readWindowsDarkTheme: () => systemDark);
+            try
+            {
+                var picker = dock.CreateThemePicker();
+                var choices = ((WrapPanel)picker.Children[1]).Children.OfType<RadioButton>().ToArray();
+                var surface = (Border)dock.Content;
+                var background = (SolidColorBrush)surface.Background;
+                var light = background.Color;
+                var preview = new Border { Child = picker, Background = ThemePalette.Surface, Padding = new Thickness(16) };
+                void Capture(string name)
+                {
+                    if (previews is null) return;
+                    preview.Measure(new Size(400, 200));
+                    preview.Arrange(new Rect(0, 0, 400, preview.DesiredSize.Height));
+                    SavePreview(preview, Path.Combine(previews, "theme-" + name + ".png"));
+                }
+                void NotifyWindows()
+                {
+                    typeof(DockWindow).GetMethod("WindowMessage", PrivateInstance)!.Invoke(dock,
+                        new object[] { (nint)0, 0x001A, (nint)0, (nint)0, false });
+                    dock.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+                }
+                choices[1].IsChecked = true;
+                var dark = background.Color;
+                Check((SystemParameters.HighContrast || dark != light) && store.Load(out _).Theme == DockTheme.Dark);
+                Capture("sombre");
+                NotifyWindows();
+                Check(background.Color == dark);
+                choices[0].IsChecked = true;
+                systemDark = true;
+                NotifyWindows();
+                Check(background.Color == light && store.Load(out _).Theme == DockTheme.Light);
+                Capture("clair");
+                choices[2].IsChecked = true;
+                Check(background.Color == dark);
+                systemDark = false;
+                NotifyWindows();
+                Check(background.Color == light && store.Load(out _).Theme == DockTheme.Automatic);
+                Check(background.Opacity == settings.BackgroundOpacity);
+            }
+            finally { dock.Close(); }
+        });
+    }
+
+    private static void RunIconSizeTest(string temporary, string? previews)
+    {
+        Run("Icon size choices immediately resize the dock and preview and survive a restart", () =>
+        {
+            var file = Path.Combine(temporary, "icon-size.json");
+            File.WriteAllText(file, "{}");
+            var store = new SettingsStore(file);
+            var settings = store.Load(out _);
+            Check(settings.IconSize == 48);
+            settings.ShowRecycleBin = true;
+            var dock = new DockWindow(settings, store, new FakeRecycleBin());
+            try
+            {
+                var picker = dock.CreateIconSizePicker();
+                var options = (WrapPanel)((StackPanel)picker.Children[0]).Children[1];
+                var preview = (Image)((Border)picker.Children[1]).Child;
+                var row = (InsertionPanel)((Viewbox)((Border)dock.Content).Child).Child;
+                row.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                var original = row.DesiredSize;
+                foreach (var (index, size) in new[] { (2, 60), (0, 36), (1, 48) })
+                {
+                    ((RadioButton)options.Children[index]).IsChecked = true;
+                    row.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                    Check(preview.Width == size && preview.Height == size && store.Load(out _).IconSize == size);
+                    Check(Math.Abs(row.DesiredSize.Width - original.Width * size / 48) < 0.01);
+                    Check(Math.Abs(row.DesiredSize.Height - original.Height * size / 48) < 0.01);
+                    if (previews is not null && size == 60)
+                    {
+                        var surface = new Border { Background = Brushes.White, Padding = new Thickness(12), Child = picker };
+                        surface.Measure(new Size(360, 200));
+                        surface.Arrange(new Rect(0, 0, 360, surface.DesiredSize.Height));
+                        SavePreview(surface, Path.Combine(previews, "taille-icones.png"));
+                    }
+                }
+            }
+            finally { dock.Close(); }
+            File.WriteAllText(file, "{\"IconSize\": -20, \"AutoHide\": false}");
+            var recovered = store.Load(out _);
+            Check(recovered.IconSize == 48 && !recovered.AutoHide);
+        });
+    }
+
+    private static void RunOpenIndicatorTest(string temporary, string? previews)
+    {
+        Run("Open application shows the green indicator on its first render and retains it when pinned", () =>
+        {
+            var settings = new DockSettings { ShowOpenApplications = true };
+            var windows = new FakeApplicationWindows();
+            windows.OpenWindows.Add(new(1, 10, Path.Combine(Environment.SystemDirectory, "notepad.exe"), null));
+            var window = new DockWindow(settings, new SettingsStore(Path.Combine(temporary, "open-indicator.json")), new FakeRecycleBin(), windows);
+            try
+            {
+                var refresh = (Task)typeof(DockWindow).GetMethod("RefreshRunningAsync", PrivateInstance)!.Invoke(window, null)!;
+                PumpUntil(() => refresh.IsCompleted);
+                refresh.GetAwaiter().GetResult();
+                var surface = (Border)window.Content;
+                var panel = (InsertionPanel)((Viewbox)surface.Child).Child;
+                Button AppTile() => panel.Children.OfType<Button>().Single(b => b != window.SettingsButton);
+                bool GreenDot() => ((Grid)AppTile().Content).Children.OfType<System.Windows.Shapes.Ellipse>().Single() is
+                    { Visibility: Visibility.Visible, Fill: SolidColorBrush brush } && brush.Color == Color.FromRgb(65, 218, 119);
+                Check(settings.Entries.Count == 0 && GreenDot());
+                if (previews is not null)
+                {
+                    surface.Measure(new Size(600, 600));
+                    surface.Arrange(new Rect(new Point(), surface.DesiredSize));
+                    SavePreview(surface, Path.Combine(previews, "open-applications-indicator.png"));
+                }
+                ((MenuItem)AppTile().ContextMenu.Items[0]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Check(settings.Entries.Count == 1 && GreenDot());
+            }
+            finally { window.Close(); }
+        });
+    }
+
     private static void SavePreview(FrameworkElement element, string path)
     {
         element.UpdateLayout(); Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
@@ -1976,6 +2150,8 @@ internal static partial class Program
     private static void Check(bool condition) { if (!condition) throw new InvalidOperationException("Assertion failed"); }
     private sealed class FakeApplicationWindows : IApplicationWindows
     {
+        internal List<ApplicationWindow> OpenWindows { get; } = [];
+        public IReadOnlyList<ApplicationWindow> ListOpenWindows() => OpenWindows.ToArray();
         internal readonly List<TaskCompletionSource<int>> Pending = [];
         internal int Closes;
         internal readonly List<TaskCompletionSource<IReadOnlyList<ApplicationWindow>>> Lists = [];

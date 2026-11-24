@@ -7,9 +7,9 @@ namespace WinDock;
 
 internal sealed class DockSettingsView : Grid
 {
-    internal static Brush Surface { get; } = ColorBrush(245, 247, 251);
-    internal static Brush Ink { get; } = ColorBrush(31, 43, 61);
-    internal static Brush Muted { get; } = ColorBrush(78, 95, 116);
+    internal static Brush Surface => ThemePalette.Window;
+    internal static Brush Ink => ThemePalette.Text;
+    internal static Brush Muted => ThemePalette.Muted;
 
     internal StackPanel PositionPanel { get; } = new();
     internal StackPanel AppearancePanel { get; } = new();
@@ -55,11 +55,4 @@ internal sealed class DockSettingsView : Grid
         .Concat(KeyboardPanel.Children.Cast<UIElement>()).Concat(MenusPanel.Children.Cast<UIElement>());
 
     internal void SelectPage(string name) => Tabs.SelectedItem = Tabs.Items.OfType<TabItem>().Single(t => Equals(t.Header, name));
-
-    private static SolidColorBrush ColorBrush(byte red, byte green, byte blue)
-    {
-        var brush = new SolidColorBrush(Color.FromRgb(red, green, blue));
-        brush.Freeze();
-        return brush;
-    }
 }

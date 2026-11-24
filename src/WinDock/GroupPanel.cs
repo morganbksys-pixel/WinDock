@@ -13,8 +13,8 @@ internal sealed class GroupPanel : Window
 {
     internal readonly GroupGrid Items = new();
     internal readonly ScrollViewer Scroll;
-    internal readonly TextBlock TitleLabel = new() { Foreground = Brushes.White, FontSize = 16, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, ToolTip = "Double-cliquez pour renommer" };
-    internal readonly TextBox TitleEditor = new() { Visibility = Visibility.Collapsed, FontSize = 16, MaxLength = 120, Padding = new Thickness(4), Height = 32, Foreground = Brushes.White, CaretBrush = Brushes.White, Background = new SolidColorBrush(Color.FromArgb(32, 255, 255, 255)), BorderBrush = Brushes.DeepSkyBlue, BorderThickness = new Thickness(1), VerticalAlignment = VerticalAlignment.Center };
+    internal readonly TextBlock TitleLabel = new() { Foreground = ThemePalette.Text, FontSize = 16, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, ToolTip = "Double-cliquez pour renommer" };
+    internal readonly TextBox TitleEditor = new() { Visibility = Visibility.Collapsed, FontSize = 16, MaxLength = 120, Padding = new Thickness(4), Height = 32, Foreground = ThemePalette.Text, CaretBrush = ThemePalette.Text, Background = ThemePalette.Raised, BorderBrush = Brushes.DeepSkyBlue, BorderThickness = new Thickness(1), VerticalAlignment = VerticalAlignment.Center };
     internal readonly Button AddButton = new() { Content = "+", FontSize = 22, Width = 32, Height = 32, Margin = new Thickness(8, 0, 0, 0), ToolTip = "Ajouter au groupe" };
     private readonly Func<string, bool> rename;
     private string currentName = "";

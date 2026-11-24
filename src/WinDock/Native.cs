@@ -82,6 +82,10 @@ internal static class Native
         return displays;
     }
 
+    internal static bool IsTaskWindow(nint window) =>
+        (GetWindowLongPtr(window, -20) & 0x80) == 0 && // WS_EX_TOOLWINDOW
+        (DwmGetWindowAttribute(window, 14, out var cloaked, sizeof(int)) != 0 || cloaked == 0);
+
     public static void MakeNonActivating(nint hwnd) => SetWindowLongPtr(hwnd, -20, GetWindowLongPtr(hwnd, -20) | 0x08000000 | 0x80);
     internal static void SetActivationEnabled(nint hwnd, bool enabled) => SetWindowLongPtr(hwnd, -20,
         enabled ? GetWindowLongPtr(hwnd, -20) & ~0x08000000 : GetWindowLongPtr(hwnd, -20) | 0x08000000);

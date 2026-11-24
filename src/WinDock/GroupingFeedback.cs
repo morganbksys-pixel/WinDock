@@ -28,7 +28,7 @@ internal sealed class GroupingFeedback : Window
 {
     private readonly Canvas canvas = new();
     private readonly Border halo = new() { CornerRadius = new CornerRadius(14), IsHitTestVisible = false };
-    private readonly TextBlock caption = new() { Foreground = Brushes.White, FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, TextAlignment = TextAlignment.Center };
+    private readonly TextBlock caption = new() { Foreground = ThemePalette.Text, FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, TextAlignment = TextAlignment.Center };
     private readonly Border hint;
 
     internal GroupingFeedback()
@@ -36,7 +36,7 @@ internal sealed class GroupingFeedback : Window
         WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.NoResize;
         AllowsTransparency = true; Background = Brushes.Transparent;
         ShowInTaskbar = false; ShowActivated = false; Topmost = true; IsHitTestVisible = false;
-        hint = new Border { Child = caption, Background = new SolidColorBrush(Color.FromRgb(27, 30, 39)), CornerRadius = new CornerRadius(8), Padding = new Thickness(10, 7, 10, 7) };
+        hint = new Border { Child = caption, Background = ThemePalette.Surface, CornerRadius = new CornerRadius(8), Padding = new Thickness(10, 7, 10, 7) };
         canvas.Children.Add(halo); canvas.Children.Add(hint); Content = canvas;
         SourceInitialized += (_, _) => Native.MakeClickThrough(new WindowInteropHelper(this).Handle);
     }

@@ -38,6 +38,7 @@ public sealed partial class DockWindow : Window
     private IndicatorWindow? indicator;
     private PixelRect indicatorArea;
     private DockLayout? placedLayout;
+    private readonly Func<bool> readWindowsDarkTheme;
     private readonly SolidColorBrush dockBackground = new(Color.FromRgb(27, 30, 39));
     private ContextMenu? activeMenu;
     private ContextMenuDismissal? menuDismissal;
@@ -73,11 +74,12 @@ public sealed partial class DockWindow : Window
     internal DockWindow(DockSettings settings, SettingsStore store, IRecycleBinService recycleBin,
         IApplicationWindows? applicationWindows = null, IDefaultDockService? defaultDock = null,
         IExplorerRestarter? explorerRestarter = null, Func<bool>? confirmExplorerRestart = null,
-        Func<List<Display>>? getDisplays = null)
+        Func<List<Display>>? getDisplays = null, Func<bool>? readWindowsDarkTheme = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(store);
         this.settings = settings;
+        this.readWindowsDarkTheme = readWindowsDarkTheme ?? DockMenuTheme.WindowsUsesDarkTheme;
         this.getDisplays = getDisplays ?? Native.Displays;
         this.store = store;
         this.recycleBin = recycleBin;
@@ -86,6 +88,7 @@ public sealed partial class DockWindow : Window
         this.explorerRestarter = explorerRestarter ?? new ExplorerRestarter();
         this.confirmExplorerRestart = confirmExplorerRestart ?? ConfirmExplorerRestart;
         shortcuts = new ManagedShortcuts(store);
+        RefreshTheme();
         dockBackground.Opacity = settings.BackgroundOpacity;
         Title = "WinDock";
         var iconDecoder = new System.Windows.Media.Imaging.IconBitmapDecoder(
@@ -101,6 +104,7 @@ public sealed partial class DockWindow : Window
         ShowActivated = false;
         Topmost = true;
         AllowDrop = true;
+        ApplyIconSize();
         fittedItems.Child = items;
         Content = DockAppearance.Surface(dockBackground, fittedItems, new Thickness(8));
         ContextMenu = CreateDockMenu();
@@ -150,6 +154,8 @@ public sealed partial class DockWindow : Window
         if (message == GlobalHotkeys.Message) handled = HandleHotkey((int)wParam);
         if (message == 0x21) { handled = true; return 3; } // MA_NOACTIVATE, preserving mouse clicks.
         if (message == 0x84 && !revealed) { handled = true; return -1; } // HTTRANSPARENT
+        if (message is 0x001A or 0x031A or 0x0015) // Windows settings, theme or system colors changed.
+            Dispatcher.BeginInvoke(() => { if (!closed) RefreshTheme(); });
         if (message is 0x7E or 0x1A or 0x02E0)
             Dispatcher.BeginInvoke(RefreshPlacement, DispatcherPriority.Loaded);
         return 0;
@@ -284,17 +290,23 @@ public sealed partial class DockWindow : Window
         items.ShowInsertion(null);
         items.Children.Clear();
         items.Orientation = Horizontal ? Orientation.Horizontal : Orientation.Vertical;
-        if (settings.Entries.Count == 0 && !settings.ShowRecycleBin)
+        if (!settings.ShowOpenApplications || !settings.Entries.SequenceEqual(openSectionFavorites))
+        {
+            openApplications = [];
+            lastRunningCheck = 0;
+        }
+        if (settings.Entries.Count == 0 && !settings.ShowRecycleBin && openApplications.Count == 0)
         {
             items.Children.Add(new TextBlock
             {
-                Text = "Clic droit pour ajouter", Foreground = Brushes.LightGray,
+                Text = "Clic droit pour ajouter", Foreground = ThemePalette.Muted,
                 TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 Width = Horizontal ? 236 : 58, Margin = new Thickness(2, 8, 2, 8), FontSize = 12
             });
         }
         foreach (var entry in settings.Entries.Where(e => e.GroupId is null)) items.Children.Add(CreateEntryButton(entry));
+        AddOpenApplicationsSection();
         if (settings.ShowRecycleBin)
         {
             recycleButton = new Button { Width = 60, Height = 60, Focusable = false, ContextMenu = CreateRecycleMenu() };
@@ -438,7 +450,7 @@ public sealed partial class DockWindow : Window
         ContextMenuDismissal? dismissal = null;
         menu.Opened += (_, _) =>
         {
-            DockMenuTheme.Apply(menu);
+            DockMenuTheme.Apply(menu, darkTheme, SystemParameters.HighContrast);
             openGeneration++;
             CloseLabels();
             if (activeMenu is not null && activeMenu != menu) activeMenu.IsOpen = false;
@@ -467,7 +479,7 @@ public sealed partial class DockWindow : Window
         _ => System.Windows.Controls.Primitives.PlacementMode.Left
     };
 
-    private bool IsCurrentEntry(DockEntry entry) => !closed && settings.Entries.Contains(entry);
+    private bool IsCurrentEntry(DockEntry entry) => !closed && (settings.Entries.Contains(entry) || openApplications.Contains(entry));
 
     internal async Task OpenEntryAsync(DockEntry entry, Button button)
     {
@@ -477,12 +489,13 @@ public sealed partial class DockWindow : Window
         interactionLocks++;
         try
         {
-            if (shortcuts.IsMissing(entry)) { OfferRepair(entry); return; }
+            var temporary = openApplications.Contains(entry);
+            if (!temporary && shortcuts.IsMissing(entry)) { OfferRepair(entry); return; }
             if (Directory.Exists(entry.Path)) { Launch(entry); return; }
             if (activeMenu is not null) activeMenu.IsOpen = false;
             var windows = await applicationWindows.ListAsync(entry, lifetime.Token);
             if (!IsCurrentEntry(entry) || !button.IsLoaded || request != openGeneration) return;
-            if (windows.Count == 0) { CloseGroup(); Launch(entry); }
+            if (windows.Count == 0) { if (!temporary) Launch(entry); else lastRunningCheck = 0; }
             else if (windows.Count == 1) await ActivateEntryWindowAsync(entry, windows[0]);
             else ShowWindowMenu(entry, button, windows);
         }
@@ -546,6 +559,7 @@ public sealed partial class DockWindow : Window
             };
             menu.Items.Add(item);
         }
+        if (openApplications.Contains(entry)) { menu.IsOpen = true; return; }
         menu.Items.Add(new Separator());
         var launch = new MenuItem { Header = "Lancer à nouveau" };
         launch.Click += (_, _) => { menu.IsOpen = false; if (IsCurrentEntry(entry)) Launch(entry); };
@@ -745,15 +759,15 @@ public sealed partial class DockWindow : Window
             panel.Children.Add(new TextBlock
             {
                 Text = $"Impossible d’ouvrir « {ManagedShortcuts.Name(entry)} ».\n\n{error ?? "La cible est introuvable."}",
-                TextWrapping = TextWrapping.Wrap, Foreground = Brushes.White, Margin = new Thickness(0, 0, 0, 20)
+                TextWrapping = TextWrapping.Wrap, Foreground = ThemePalette.Text, Margin = new Thickness(0, 0, 0, 20)
             });
             var prompt = new Window
             {
                 Title = "Réparer le raccourci", Owner = this, Width = 460, SizeToContent = SizeToContent.Height,
                 ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterScreen,
-                Background = new SolidColorBrush(Color.FromRgb(27, 30, 39)), Content = panel
+                Background = ThemePalette.Surface, Content = panel
             };
-            var choose = new Button { Content = "Choisir une nouvelle cible", Padding = new Thickness(12), Background = new SolidColorBrush(Color.FromRgb(62, 77, 111)) };
+            var choose = new Button { Content = "Choisir une nouvelle cible", Padding = new Thickness(12), Background = ThemePalette.Raised };
             choose.Click += (_, _) => prompt.DialogResult = true;
             panel.Children.Add(choose);
             var cancel = new Button { Content = "Annuler", Padding = new Thickness(12), IsCancel = true };
@@ -787,12 +801,30 @@ public sealed partial class DockWindow : Window
         var entries = settings.Entries.ToArray();
         try
         {
-            var (snapshot, missing) = await StaWorker.RunAsync(_ => (runningApplications.Snapshot(entries),
-                entries.Where(shortcuts.IsMissing).Select(e => e.Id).ToHashSet()), lifetime.Token);
+            var discover = settings.ShowOpenApplications;
+            var previousIcons = openIcons;
+            var (snapshot, missing, open, nextIcons) = await StaWorker.RunAsync(_ =>
+            {
+                var open = discover ? OpenApplications.Unpinned(applicationWindows.ListOpenWindows(), entries) : [];
+                var nextIcons = open.ToDictionary(e => e.Path,
+                    e => previousIcons.TryGetValue(e.Path, out var icon) ? icon : Native.Icon(e.Path), StringComparer.OrdinalIgnoreCase);
+                return (runningApplications.Snapshot(entries), entries.Where(shortcuts.IsMissing).Select(e => e.Id).ToHashSet(), open, nextIcons);
+            }, lifetime.Token);
             if (closed) return;
             if (!settings.Entries.SequenceEqual(entries)) { lastRunningCheck = 0; return; }
             runningEntries = snapshot;
             missingEntries = missing;
+            if (discover && settings.ShowOpenApplications && activeMenu is null && !dragging && !externalDrag &&
+                pressedEntry is null && openingEntries.Count == 0 && groupPanel is null)
+            {
+                openIcons = nextIcons;
+                openSectionFavorites = entries;
+                if (!openApplications.Select(e => e.Path).SequenceEqual(open.Select(e => e.Path), StringComparer.OrdinalIgnoreCase))
+                {
+                    openApplications = open;
+                    RenderItems();
+                }
+            }
             foreach (var (id, badge) in runningIndicators)
             {
                 badge.Fill = missing.Contains(id) ? Brushes.Orange : new SolidColorBrush(Color.FromRgb(65, 218, 119));
@@ -844,14 +876,15 @@ public sealed partial class DockWindow : Window
         var monitorPicker = new ComboBox { ItemsSource = displays.Select(d => d.Label), SelectedIndex = Math.Max(0, displays.FindIndex(d => d.Device == display?.Device)), Margin = new Thickness(0, 6, 0, 0) };
         panel.Children.Add(monitorPicker);
         panel = view.AppearancePanel;
-        panel.Children.Add(new TextBlock { Text = "Visibilité et contenu", Foreground = DockSettingsView.Ink, FontSize = 18, Margin = new Thickness(0, 0, 0, 12) });
-        var autoHideToggle = new CheckBox { Content = "Masquage automatique", IsChecked = settings.AutoHide, Foreground = DockSettingsView.Ink, Margin = new Thickness(0, 0, 0, 16) };
+        panel.Children.Add(CreateAppearancePickers());
+        panel.Children.Add(new TextBlock { Text = "Visibilité et contenu", Foreground = DockSettingsView.Ink, FontSize = 18, Margin = new Thickness(0, 0, 0, 6) });
+        var autoHideToggle = new CheckBox { Content = "Masquage automatique", IsChecked = settings.AutoHide, Foreground = DockSettingsView.Ink, Margin = new Thickness(0, 0, 0, 6) };
         autoHideToggle.SetResourceReference(StyleProperty, "SettingsSwitch");
         settingsAutoHideToggle = autoHideToggle;
         autoHideToggle.Click += (_, _) => SetAutoHide(autoHideToggle.IsChecked == true);
         panel.Children.Add(autoHideToggle);
-        panel.Children.Add(new TextBlock { Text = "Sans masquage automatique, le dock reste visible sauf en plein écran.", TextWrapping = TextWrapping.Wrap, Foreground = DockSettingsView.Muted, Margin = new Thickness(0, 0, 0, 16) });
-        var recycleToggle = new CheckBox { Content = "Afficher la corbeille", IsChecked = settings.ShowRecycleBin, Foreground = DockSettingsView.Ink, Margin = new Thickness(0, 0, 0, 20) };
+        panel.Children.Add(new TextBlock { Text = "Sans masquage automatique, le dock reste visible sauf en plein écran.", TextWrapping = TextWrapping.Wrap, Foreground = DockSettingsView.Muted, Margin = new Thickness(0, 0, 0, 6) });
+        var recycleToggle = new CheckBox { Content = "Afficher la corbeille", IsChecked = settings.ShowRecycleBin, Foreground = DockSettingsView.Ink, Margin = new Thickness(0, 0, 0, 8) };
         settingsRecycleToggle = recycleToggle;
         recycleToggle.SetResourceReference(StyleProperty, "SettingsSwitch");
         recycleToggle.Click += async (_, _) =>
@@ -860,6 +893,19 @@ public sealed partial class DockWindow : Window
             await RefreshRecycleAsync();
         };
         panel.Children.Add(recycleToggle);
+        var openToggle = new CheckBox
+        {
+            Content = "Afficher les applications ouvertes non épinglées", IsChecked = settings.ShowOpenApplications,
+            Foreground = DockSettingsView.Ink, Margin = new Thickness(0, 0, 0, 6)
+        };
+        openToggle.SetResourceReference(StyleProperty, "SettingsSwitch");
+        openToggle.Click += (_, _) =>
+        {
+            settings.ShowOpenApplications = openToggle.IsChecked == true;
+            lastRunningCheck = 0;
+            PersistAndRender();
+        };
+        panel.Children.Add(openToggle);
         panel.Children.Add(new TextBlock { Text = "Fond du dock", Foreground = DockSettingsView.Ink, FontSize = 18, Margin = new Thickness(0, 8, 0, 9) });
         var opacityLabel = new TextBlock { Foreground = DockSettingsView.Muted, Text = $"Opacité du fond : {settings.BackgroundOpacity:P0}" };
         panel.Children.Add(opacityLabel);
@@ -867,7 +913,7 @@ public sealed partial class DockWindow : Window
         {
             Minimum = 10, Maximum = 100, Value = settings.BackgroundOpacity * 100,
             TickFrequency = 1, IsSnapToTickEnabled = true,
-            Margin = new Thickness(0, 8, 0, 20), ToolTip = "Transparence du fond uniquement"
+            Margin = new Thickness(0, 6, 0, 6), ToolTip = "Transparence du fond uniquement"
         };
         panel.Children.Add(opacitySlider);
         panel.Children.Add(new TextBlock { Text = "Les icônes restent opaques.", TextWrapping = TextWrapping.Wrap, Foreground = DockSettingsView.Muted });

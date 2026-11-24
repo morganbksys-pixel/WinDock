@@ -12,7 +12,7 @@ namespace WinDock;
 internal sealed class ShortcutEditor : Window
 {
     private readonly TextBox name = new(), target = new(), arguments = new(), work = new();
-    private readonly TextBlock hint = new() { Foreground = Brushes.LightGray, TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock hint = new() { Foreground = ThemePalette.Muted, TextWrapping = TextWrapping.Wrap };
     private string source;
     private ShortcutDetails loaded;
     private bool saving;
@@ -24,16 +24,16 @@ internal sealed class ShortcutEditor : Window
         Title = "Modifier le raccourci";
         Width = 560; SizeToContent = SizeToContent.Height; ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        Background = new SolidColorBrush(Color.FromRgb(27, 30, 39));
+        Background = ThemePalette.Surface;
         source = entry.Path;
         loaded = ShellShortcut.Read(source);
         name.Text = ManagedShortcuts.Name(entry);
         var panel = new StackPanel { Margin = new Thickness(24) };
         Content = panel;
-        panel.Children.Add(new TextBlock { Text = "Votre raccourci", Foreground = Brushes.White, FontSize = 22, Margin = new Thickness(0, 0, 0, 16) });
+        panel.Children.Add(new TextBlock { Text = "Votre raccourci", Foreground = ThemePalette.Text, FontSize = 22, Margin = new Thickness(0, 0, 0, 16) });
         void Field(string label, TextBox box)
         {
-            panel.Children.Add(new TextBlock { Text = label, Foreground = Brushes.LightGray });
+            panel.Children.Add(new TextBlock { Text = label, Foreground = ThemePalette.Muted });
             box.Padding = new Thickness(8); box.Margin = new Thickness(0, 6, 0, 12);
             panel.Children.Add(box);
         }
@@ -42,7 +42,7 @@ internal sealed class ShortcutEditor : Window
         var browse = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 14) };
         Button Button(string text, Action action)
         {
-            var button = new Button { Content = text, Padding = new Thickness(12, 8, 12, 8), Margin = new Thickness(0, 0, 8, 0), Background = new SolidColorBrush(Color.FromRgb(62, 77, 111)) };
+            var button = new Button { Content = text, Padding = new Thickness(12, 8, 12, 8), Margin = new Thickness(0, 0, 8, 0), Background = ThemePalette.Raised };
             button.Click += (_, _) => action(); return button;
         }
         browse.Children.Add(Button("Parcourir…", () =>
