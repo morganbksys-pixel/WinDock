@@ -20,7 +20,12 @@ dotnet run --project tests/WinDock.Tests -c Release -p:BuildInParallel=false
 dotnet publish src/WinDock/WinDock.csproj -c Release -r win-x64 --self-contained true -o artifacts/WinDock-win-x64 -m:1
 ```
 
-These compile, launch, test, and publish respectively. Tests require an interactive Windows session. After building tests, append `--no-build -- --preview artifacts/previews` to the test run command for screenshots, or `--no-build -- --catalog-smoke artifacts/previews` for installed-application checks; the latter opens Calculator.
+These commands compile, launch, run the full test harness, and publish respectively. The full harness opens windows. After building Release, use these modes for local validation while the user is working:
+
+- Append `--no-build -- --background` to the test run command for offscreen tests.
+- Append `--no-build -- --isolated-desktop artifacts/previews-<version>` to test real Windows windows on an inactive desktop. Replace `<version>` with the version under test.
+
+Run tests on the user's visible desktop or restart their running dock only on explicit request. Visible runs include `--no-build -- --preview artifacts/previews` for full-harness screenshots and `--no-build -- --catalog-smoke artifacts/previews` for installed-application checks (opens Calculator).
 
 ## Coding Style & Naming Conventions
 
@@ -45,6 +50,8 @@ Build Release, run the executable test harness, and generate/review previews for
 ## Commit & Pull Request Guidelines
 
 Use concise, descriptive commit subjects. PRs should explain the problem, resulting behavior, validation, and remaining limitations. Link relevant issues and include screenshots for visual changes.
+
+Report separately which offscreen tests, isolated-desktop tests, and full GitHub Actions suite ran and their results. When asked to verify a PR, wait for the checks on the latest pushed commit to finish and report their final status.
 
 ## Data Safety
 
