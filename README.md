@@ -16,6 +16,7 @@ Vos applications et dossiers favoris, à portée de clic dans un dock discret po
 - **Organisez le dock** par glisser-déposer : utilisez des séparateurs ou glissez une icône sur une autre pour créer un groupe dépliable. Double-cliquez sur son titre pour le renommer.
 - **Gardez votre écran dégagé** avec le masquage automatique ; survolez la petite barre pour retrouver le dock, ou choisissez de le garder visible.
 - **Choisissez sa place** sur un bord ou dans un coin de l’écran, avec une ouverture horizontale ou verticale depuis ce coin.
+- **Retrouvez les applications ouvertes non épinglées** en activant cette section dans **Réglages → Apparence**. Un clic droit sur une application de la section permet de l’épingler au dock.
 - **Repérez les applications actives** grâce au point vert, même sans fenêtre ouverte, et demandez la fermeture de leurs fenêtres depuis le clic droit. L’Explorateur Windows n’affiche pas ce point ; son menu propose **Redémarrer l’Explorateur Windows…**, avec confirmation.
 
 Au premier lancement, WinDock prépare l’Explorateur, votre navigateur, votre messagerie, votre dossier personnel, Téléchargements, Documents et la corbeille, selon leur disponibilité. Les configurations existantes sont conservées. **Réglages → Général → Restaurer le dock par défaut…** ouvre immédiatement une confirmation et prépare la sélection en arrière-plan, en gardant votre apparence et votre emplacement. La messagerie utilise l’application associée à mailto lorsqu’elle est identifiable, sans ouvrir de nouveau message.

@@ -25,6 +25,8 @@ public sealed class DockSettings
     public DockHotkey? SettingsHotkey { get; set; } = DockHotkey.OpenSettings;
     /// <summary>Stable category and command identifiers hidden from context menus.</summary>
     public HashSet<string> HiddenMenuCommands { get; set; } = [];
+    /// <summary>Shows a temporary section for open applications outside the saved favorites.</summary>
+    public bool ShowOpenApplications { get; set; }
     public bool ShowRecycleBin { get; set; }
     public DockEdge Edge { get; set; } = DockEdge.Bottom;
     /// <summary>Whether the dock is centered on an edge or anchored to a corner.</summary>

@@ -284,7 +284,12 @@ public sealed partial class DockWindow : Window
         items.ShowInsertion(null);
         items.Children.Clear();
         items.Orientation = Horizontal ? Orientation.Horizontal : Orientation.Vertical;
-        if (settings.Entries.Count == 0 && !settings.ShowRecycleBin)
+        if (!settings.ShowOpenApplications || !settings.Entries.SequenceEqual(openSectionFavorites))
+        {
+            openApplications = [];
+            lastRunningCheck = 0;
+        }
+        if (settings.Entries.Count == 0 && !settings.ShowRecycleBin && openApplications.Count == 0)
         {
             items.Children.Add(new TextBlock
             {
@@ -295,6 +300,7 @@ public sealed partial class DockWindow : Window
             });
         }
         foreach (var entry in settings.Entries.Where(e => e.GroupId is null)) items.Children.Add(CreateEntryButton(entry));
+        AddOpenApplicationsSection();
         if (settings.ShowRecycleBin)
         {
             recycleButton = new Button { Width = 60, Height = 60, Focusable = false, ContextMenu = CreateRecycleMenu() };
@@ -467,7 +473,7 @@ public sealed partial class DockWindow : Window
         _ => System.Windows.Controls.Primitives.PlacementMode.Left
     };
 
-    private bool IsCurrentEntry(DockEntry entry) => !closed && settings.Entries.Contains(entry);
+    private bool IsCurrentEntry(DockEntry entry) => !closed && (settings.Entries.Contains(entry) || openApplications.Contains(entry));
 
     internal async Task OpenEntryAsync(DockEntry entry, Button button)
     {
@@ -477,12 +483,13 @@ public sealed partial class DockWindow : Window
         interactionLocks++;
         try
         {
-            if (shortcuts.IsMissing(entry)) { OfferRepair(entry); return; }
+            var temporary = openApplications.Contains(entry);
+            if (!temporary && shortcuts.IsMissing(entry)) { OfferRepair(entry); return; }
             if (Directory.Exists(entry.Path)) { Launch(entry); return; }
             if (activeMenu is not null) activeMenu.IsOpen = false;
             var windows = await applicationWindows.ListAsync(entry, lifetime.Token);
             if (!IsCurrentEntry(entry) || !button.IsLoaded || request != openGeneration) return;
-            if (windows.Count == 0) { CloseGroup(); Launch(entry); }
+            if (windows.Count == 0) { if (!temporary) Launch(entry); else lastRunningCheck = 0; }
             else if (windows.Count == 1) await ActivateEntryWindowAsync(entry, windows[0]);
             else ShowWindowMenu(entry, button, windows);
         }
@@ -546,6 +553,7 @@ public sealed partial class DockWindow : Window
             };
             menu.Items.Add(item);
         }
+        if (openApplications.Contains(entry)) { menu.IsOpen = true; return; }
         menu.Items.Add(new Separator());
         var launch = new MenuItem { Header = "Lancer à nouveau" };
         launch.Click += (_, _) => { menu.IsOpen = false; if (IsCurrentEntry(entry)) Launch(entry); };
@@ -787,12 +795,30 @@ public sealed partial class DockWindow : Window
         var entries = settings.Entries.ToArray();
         try
         {
-            var (snapshot, missing) = await StaWorker.RunAsync(_ => (runningApplications.Snapshot(entries),
-                entries.Where(shortcuts.IsMissing).Select(e => e.Id).ToHashSet()), lifetime.Token);
+            var discover = settings.ShowOpenApplications;
+            var previousIcons = openIcons;
+            var (snapshot, missing, open, nextIcons) = await StaWorker.RunAsync(_ =>
+            {
+                var open = discover ? OpenApplications.Unpinned(applicationWindows.ListOpenWindows(), entries) : [];
+                var nextIcons = open.ToDictionary(e => e.Path,
+                    e => previousIcons.TryGetValue(e.Path, out var icon) ? icon : Native.Icon(e.Path), StringComparer.OrdinalIgnoreCase);
+                return (runningApplications.Snapshot(entries), entries.Where(shortcuts.IsMissing).Select(e => e.Id).ToHashSet(), open, nextIcons);
+            }, lifetime.Token);
             if (closed) return;
             if (!settings.Entries.SequenceEqual(entries)) { lastRunningCheck = 0; return; }
             runningEntries = snapshot;
             missingEntries = missing;
+            if (discover && settings.ShowOpenApplications && activeMenu is null && !dragging && !externalDrag &&
+                pressedEntry is null && openingEntries.Count == 0 && groupPanel is null)
+            {
+                openIcons = nextIcons;
+                openSectionFavorites = entries;
+                if (!openApplications.Select(e => e.Path).SequenceEqual(open.Select(e => e.Path), StringComparer.OrdinalIgnoreCase))
+                {
+                    openApplications = open;
+                    RenderItems();
+                }
+            }
             foreach (var (id, badge) in runningIndicators)
             {
                 badge.Fill = missing.Contains(id) ? Brushes.Orange : new SolidColorBrush(Color.FromRgb(65, 218, 119));
@@ -860,6 +886,19 @@ public sealed partial class DockWindow : Window
             await RefreshRecycleAsync();
         };
         panel.Children.Add(recycleToggle);
+        var openToggle = new CheckBox
+        {
+            Content = "Afficher les applications ouvertes non épinglées", IsChecked = settings.ShowOpenApplications,
+            Foreground = DockSettingsView.Ink, Margin = new Thickness(0, 0, 0, 16)
+        };
+        openToggle.SetResourceReference(StyleProperty, "SettingsSwitch");
+        openToggle.Click += (_, _) =>
+        {
+            settings.ShowOpenApplications = openToggle.IsChecked == true;
+            lastRunningCheck = 0;
+            PersistAndRender();
+        };
+        panel.Children.Add(openToggle);
         panel.Children.Add(new TextBlock { Text = "Fond du dock", Foreground = DockSettingsView.Ink, FontSize = 18, Margin = new Thickness(0, 8, 0, 9) });
         var opacityLabel = new TextBlock { Foreground = DockSettingsView.Muted, Text = $"Opacité du fond : {settings.BackgroundOpacity:P0}" };
         panel.Children.Add(opacityLabel);

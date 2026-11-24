@@ -685,6 +685,43 @@ internal static partial class Program
             RunContextualMenuTests(temporary, args);
             RunDockKeyboardTests(temporary, args);
             RunExplorerRestartWindowTests(temporary, args);
+            Run("Open apps exclude grouped favorites, disappear on close and can be pinned exactly once", () =>
+            {
+                var group = new DockEntry(Guid.NewGuid(), "", DisplayName: "Outils", IsGroup: true);
+                var member = new DockEntry(Guid.NewGuid(), ApplicationIdentityResolver.ExplorerExecutable, GroupId: group.Id);
+                var second = new DockEntry(Guid.NewGuid(), temporary, GroupId: group.Id);
+                var settings = new DockSettings { AutoHide = false, ShowOpenApplications = true, Entries = [group, member, second] };
+                var store = new SettingsStore(Path.Combine(temporary, "open-apps.json"));
+                var windows = new FakeApplicationWindows();
+                var executable = Path.Combine(Environment.SystemDirectory, "notepad.exe");
+                windows.OpenWindows.AddRange([new(1, 10, member.Path, null), new(2, 11, executable, null),
+                    new(3, 12, executable.ToUpperInvariant(), null)]);
+                var window = new DockWindow(settings, store, new FakeRecycleBin(), windows);
+                window.Show();
+                try
+                {
+                    var panel = (StackPanel)((Viewbox)((Border)window.Content).Child).Child;
+                    Button? TemporaryTile() => panel.Children.OfType<Button>().SingleOrDefault(b =>
+                        b.ContextMenu?.Items.OfType<MenuItem>().Any(i => Equals(i.Header, "Épingler au dock")) == true);
+                    PumpUntil(() => TemporaryTile() != null);
+                    Check(settings.Entries.Count == 3);
+                    if (args.Length == 2 && args[0] == "--preview")
+                    {
+                        Directory.CreateDirectory(args[1]);
+                        SavePreview(window, Path.Combine(args[1], "open-applications.png"));
+                    }
+                    windows.OpenWindows.Clear();
+                    PumpUntil(() => TemporaryTile() == null);
+                    windows.OpenWindows.Add(new(4, 13, executable, null));
+                    PumpUntil(() => TemporaryTile() != null);
+                    ((MenuItem)TemporaryTile()!.ContextMenu.Items[0]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    PumpUntil(() => TemporaryTile() == null);
+                    var saved = store.Load(out _);
+                    Check(saved.ShowOpenApplications && saved.Entries.Count == 4 && saved.Entries[^1].Path == executable);
+                    Check(OpenApplications.Unpinned(windows.OpenWindows, saved.Entries).Count == 0);
+                }
+                finally { window.Close(); }
+            });
             Run("Settings restoration previews the exact selection and supports cancellation and confirmation", () =>
             {
                 var root = Path.Combine(temporary, "defaults-ui"); var sources = CreateDefaultSources(root);
@@ -1976,6 +2013,8 @@ internal static partial class Program
     private static void Check(bool condition) { if (!condition) throw new InvalidOperationException("Assertion failed"); }
     private sealed class FakeApplicationWindows : IApplicationWindows
     {
+        internal List<ApplicationWindow> OpenWindows { get; } = [];
+        public IReadOnlyList<ApplicationWindow> ListOpenWindows() => OpenWindows.ToArray();
         internal readonly List<TaskCompletionSource<int>> Pending = [];
         internal int Closes;
         internal readonly List<TaskCompletionSource<IReadOnlyList<ApplicationWindow>>> Lists = [];

@@ -12,6 +12,7 @@ internal enum WindowActivationResult { Activated, Unavailable, Refused }
 
 internal interface IApplicationWindows
 {
+    IReadOnlyList<ApplicationWindow> ListOpenWindows();
     Task<IReadOnlyList<ApplicationWindow>> ListAsync(DockEntry entry, CancellationToken token);
     Task<WindowActivationResult> ActivateAsync(DockEntry entry, ApplicationWindow window, CancellationToken token);
     Task<int> CountAsync(DockEntry entry, CancellationToken token);
@@ -110,6 +111,10 @@ internal sealed class ApplicationWindows : IApplicationWindows
     private static extern bool PostMessage(nint window, uint message, nint wParam, nint lParam);
 
     internal static int PostClose(nint window) => PostMessage(window, 0x0010, 0, 0) ? 0 : Marshal.GetLastWin32Error();
+
+    // Called on the dock's background STA snapshot worker.
+    public IReadOnlyList<ApplicationWindow> ListOpenWindows() => enumerate()
+        .Where(w => !string.IsNullOrWhiteSpace(w.Title) && Native.IsTaskWindow(w.Handle)).ToArray();
 
     private static IReadOnlyList<ApplicationWindow> Enumerate()
     {
