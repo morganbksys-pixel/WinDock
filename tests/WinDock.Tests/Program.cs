@@ -79,7 +79,8 @@ internal static partial class Program
         }
         if (args.Length == 3 && args[0] == "--record")
         {
-            File.WriteAllText(args[1], Environment.CurrentDirectory + "|" + args[2]);
+            File.WriteAllText(args[1] + ".tmp", Environment.CurrentDirectory + "|" + args[2]);
+            File.Move(args[1] + ".tmp", args[1], true);
             return 0;
         }
         var temporary = Path.Combine(Path.GetTempPath(), "WinDock.Tests-" + Guid.NewGuid());
@@ -1426,6 +1427,13 @@ internal static partial class Program
                     var button = panel.Children.OfType<Button>().Single(b => b.Tag is DockEntry);
                     var menu = button.ContextMenu;
                     menu.PlacementTarget = button;
+                    // Menu updates intentionally wait while the pointer is over a row.
+                    // Place this test popup away from the pointer without moving the user's mouse.
+                    var work = SystemParameters.WorkArea;
+                    Native.GetCursorPos(out var pointer);
+                    var cursor = window.PointFromScreen(new Point(pointer.X, pointer.Y));
+                    menu.Placement = System.Windows.Controls.Primitives.PlacementMode.RelativePoint;
+                    menu.HorizontalOffset = cursor.X < window.ActualWidth / 2 ? work.Width / 3 : -work.Width / 3;
                     var closeRow = (MenuItem)menu.Items[^1];
                     bool HasClose() => closeRow.Visibility == Visibility.Visible;
                     menu.IsOpen = true;
