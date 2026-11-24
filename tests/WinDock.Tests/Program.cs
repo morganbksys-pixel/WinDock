@@ -95,6 +95,7 @@ internal static partial class Program
                 RunCornerCoreTests(temporary);
                 RunCornerWindowTests(temporary, args);
                 RunMenuBackgroundTests();
+                RunIconSizeTest(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
                 RunOpenIndicatorTest(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
                 RunCornerOffscreenTests(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
                 Console.WriteLine($"{passed} background test groups passed; no windows shown or activated. Interactive tests not run.");
@@ -2008,6 +2009,48 @@ internal static partial class Program
     {
         internal int Calls;
         public Task<PreparedDefaultDock> PrepareAsync(CancellationToken token) { Calls++; return prepare(token); }
+    }
+
+    private static void RunIconSizeTest(string temporary, string? previews)
+    {
+        Run("Icon size choices immediately resize the dock and preview and survive a restart", () =>
+        {
+            var file = Path.Combine(temporary, "icon-size.json");
+            File.WriteAllText(file, "{}");
+            var store = new SettingsStore(file);
+            var settings = store.Load(out _);
+            Check(settings.IconSize == 48);
+            settings.ShowRecycleBin = true;
+            var dock = new DockWindow(settings, store, new FakeRecycleBin());
+            try
+            {
+                var picker = dock.CreateIconSizePicker();
+                var options = (WrapPanel)((StackPanel)picker.Children[0]).Children[1];
+                var preview = (Image)((Border)picker.Children[1]).Child;
+                var row = (InsertionPanel)((Viewbox)((Border)dock.Content).Child).Child;
+                row.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                var original = row.DesiredSize;
+                foreach (var (index, size) in new[] { (2, 60), (0, 36), (1, 48) })
+                {
+                    ((RadioButton)options.Children[index]).IsChecked = true;
+                    row.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                    Check(preview.Width == size && preview.Height == size && store.Load(out _).IconSize == size);
+                    Check(Math.Abs(row.DesiredSize.Width - original.Width * size / 48) < 0.01);
+                    Check(Math.Abs(row.DesiredSize.Height - original.Height * size / 48) < 0.01);
+                    if (previews is not null && size == 60)
+                    {
+                        var surface = new Border { Background = Brushes.White, Padding = new Thickness(12), Child = picker };
+                        surface.Measure(new Size(360, 200));
+                        surface.Arrange(new Rect(0, 0, 360, surface.DesiredSize.Height));
+                        SavePreview(surface, Path.Combine(previews, "taille-icones.png"));
+                    }
+                }
+            }
+            finally { dock.Close(); }
+            File.WriteAllText(file, "{\"IconSize\": -20, \"AutoHide\": false}");
+            var recovered = store.Load(out _);
+            Check(recovered.IconSize == 48 && !recovered.AutoHide);
+        });
     }
 
     private static void RunOpenIndicatorTest(string temporary, string? previews)

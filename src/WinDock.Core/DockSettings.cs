@@ -27,6 +27,8 @@ public sealed class DockSettings
     public HashSet<string> HiddenMenuCommands { get; set; } = [];
     /// <summary>Shows a temporary section for open applications outside the saved favorites.</summary>
     public bool ShowOpenApplications { get; set; }
+    /// <summary>Preferred dock icon size in device-independent pixels.</summary>
+    public int IconSize { get; set; } = 48;
     public bool ShowRecycleBin { get; set; }
     public DockEdge Edge { get; set; } = DockEdge.Bottom;
     /// <summary>Whether the dock is centered on an edge or anchored to a corner.</summary>
@@ -82,6 +84,7 @@ public sealed class SettingsStore(string path)
                 !EntryRules.IsValid(settings.Entries) ||
                 settings.Entries.Select(e => e.Id).Distinct().Count() != settings.Entries.Count)
                 throw new JsonException("Configuration invalide.");
+            if (settings.IconSize is not (36 or 48 or 60)) settings.IconSize = 48;
             settings.HiddenMenuCommands ??= [];
             return settings;
         }

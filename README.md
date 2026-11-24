@@ -15,6 +15,7 @@ Vos applications et dossiers favoris, à portée de clic dans un dock discret po
 - **Ajoutez vos favoris** depuis le catalogue des applications classiques et Microsoft Store, ou déposez vos raccourcis et dossiers depuis l’Explorateur.
 - **Organisez le dock** par glisser-déposer : utilisez des séparateurs ou glissez une icône sur une autre pour créer un groupe dépliable. Double-cliquez sur son titre pour le renommer.
 - **Gardez votre écran dégagé** avec le masquage automatique ; survolez la petite barre pour retrouver le dock, ou choisissez de le garder visible.
+- **Ajustez la taille des icônes** dans **Réglages → Apparence**. Petite, Standard ou Grande : l’aperçu et le dock suivent immédiatement votre choix.
 - **Choisissez sa place** sur un bord ou dans un coin de l’écran, avec une ouverture horizontale ou verticale depuis ce coin.
 - **Retrouvez les applications ouvertes non épinglées** en activant cette section dans **Réglages → Apparence**. Un clic droit sur une application de la section permet de l’épingler au dock.
 - **Repérez les applications actives** grâce au point vert, même sans fenêtre ouverte, et demandez la fermeture de leurs fenêtres depuis le clic droit. L’Explorateur Windows n’affiche pas ce point ; son menu propose **Redémarrer l’Explorateur Windows…**, avec confirmation.

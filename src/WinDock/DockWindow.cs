@@ -101,6 +101,7 @@ public sealed partial class DockWindow : Window
         ShowActivated = false;
         Topmost = true;
         AllowDrop = true;
+        ApplyIconSize();
         fittedItems.Child = items;
         Content = DockAppearance.Surface(dockBackground, fittedItems, new Thickness(8));
         ContextMenu = CreateDockMenu();
@@ -870,6 +871,7 @@ public sealed partial class DockWindow : Window
         var monitorPicker = new ComboBox { ItemsSource = displays.Select(d => d.Label), SelectedIndex = Math.Max(0, displays.FindIndex(d => d.Device == display?.Device)), Margin = new Thickness(0, 6, 0, 0) };
         panel.Children.Add(monitorPicker);
         panel = view.AppearancePanel;
+        panel.Children.Add(CreateIconSizePicker());
         panel.Children.Add(new TextBlock { Text = "Visibilité et contenu", Foreground = DockSettingsView.Ink, FontSize = 18, Margin = new Thickness(0, 0, 0, 12) });
         var autoHideToggle = new CheckBox { Content = "Masquage automatique", IsChecked = settings.AutoHide, Foreground = DockSettingsView.Ink, Margin = new Thickness(0, 0, 0, 16) };
         autoHideToggle.SetResourceReference(StyleProperty, "SettingsSwitch");

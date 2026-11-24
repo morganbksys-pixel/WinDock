@@ -85,7 +85,8 @@ public sealed partial class DockWindow
         if (grouped)
         {
             button.Width = double.NaN; button.Height = 100;
-            var content = (UIElement)button.Content;
+            var content = (FrameworkElement)button.Content;
+            content.LayoutTransform = items.LayoutTransform;
             button.Content = null;
             button.Content = new StackPanel
             {
