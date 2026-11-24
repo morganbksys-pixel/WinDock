@@ -81,7 +81,7 @@ public sealed partial class DockWindow
     {
         var isExplorer = ApplicationIdentityResolver.IsExplorerExecutable(entry.Path) ||
             ApplicationIdentityResolver.IsExplorerExecutable(entry.SourcePath);
-        var menu = NewMenu(entry.IsSeparator ? DockMenuPreferences.Separator : isExplorer ? Explorer : DockMenuPreferences.App);
+        var menu = NewMenu(entry.IsSeparator ? DockMenuPreferences.Separator : entry.IsDocument ? Document : isExplorer ? Explorer : DockMenuPreferences.App);
         var policy = (MenuPolicy)menu.Tag;
         if (entry.IsSeparator)
         {
@@ -98,7 +98,7 @@ public sealed partial class DockWindow
             return menu;
         }
 
-        var launch = AddConfigured(menu, isExplorer ? Restart : DockMenuPreferences.Launch, async () =>
+        var launch = AddConfigured(menu, entry.IsDocument ? OpenDocument : isExplorer ? Restart : DockMenuPreferences.Launch, async () =>
         {
             if (!IsCurrentEntry(entry)) return;
             if (isExplorer) await RestartExplorerAsync();
@@ -113,6 +113,11 @@ public sealed partial class DockWindow
             menu.Items.Add(moveItem);
         }
         AddRemove();
+        if (entry.IsDocument)
+        {
+            RefreshMenuChoices(menu);
+            return menu;
+        }
         menu.Items.Add(new System.Windows.Controls.Separator());
         var close = AddConfigured(menu, CloseWindows, async () => await CloseEntryWindowsAsync(entry));
         var generation = 0;

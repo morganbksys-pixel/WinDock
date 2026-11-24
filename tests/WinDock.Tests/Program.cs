@@ -95,6 +95,7 @@ internal static partial class Program
                 RunCornerCoreTests(temporary);
                 RunCornerWindowTests(temporary, args);
                 RunMenuBackgroundTests();
+                RunDocumentPinningTest(temporary);
                 RunThemeTest(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
                 RunIconSizeTest(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
                 RunOpenIndicatorTest(temporary, args.Length == 3 && args[1] == "--preview" ? args[2] : null);
@@ -609,7 +610,8 @@ internal static partial class Program
                 foreach (var extension in new[] { ".exe", ".LNK", ".txt" })
                 {
                     var path = Path.Combine(folder, "Éditeur test" + extension); File.WriteAllText(path, "");
-                    Check(EntryRules.IsSupported(path) == (extension != ".txt"));
+                    Check(EntryRules.IsSupported(path));
+                    Check(EntryRules.IsDocumentFile(path) == (extension == ".txt"));
                 }
                 Check(!EntryRules.IsSupported(Path.Combine(folder, "absent.exe")));
             });
@@ -726,6 +728,7 @@ internal static partial class Program
                 }
                 finally { window.Close(); }
             });
+            RunDocumentPinningTest(temporary);
             Run("Settings restoration previews the exact selection and supports cancellation and confirmation", () =>
             {
                 var root = Path.Combine(temporary, "defaults-ui"); var sources = CreateDefaultSources(root);
@@ -2010,6 +2013,48 @@ internal static partial class Program
     {
         internal int Calls;
         public Task<PreparedDefaultDock> PrepareAsync(CancellationToken token) { Calls++; return prepare(token); }
+    }
+
+    private static void RunDocumentPinningTest(string temporary)
+    {
+        Run("Dropped documents open their original paths through the Shell and survive removal from the dock and groups", () =>
+        {
+            var directory = Directory.CreateDirectory(Path.Combine(temporary, "Documents été")).FullName;
+            var first = Path.Combine(directory, "Budget final.txt");
+            var second = Path.Combine(directory, "Budget final.csv");
+            File.WriteAllText(first, "original texte");
+            File.WriteAllText(second, "original tableau");
+            var group = new DockEntry(Guid.NewGuid(), "", DisplayName: "Finances", IsGroup: true);
+            var settings = new DockSettings { Entries = [group, new(Guid.NewGuid(), directory, GroupId: group.Id),
+                new(Guid.NewGuid(), temporary, GroupId: group.Id)] };
+            var store = new SettingsStore(Path.Combine(temporary, "documents.json"));
+            var launches = new List<ProcessStartInfo>();
+            var windows = new FakeApplicationWindows();
+            var dock = new DockWindow(settings, store, new FakeRecycleBin(), windows, startTarget: launches.Add);
+            try
+            {
+                dock.DropEntries(new DataObject(DataFormats.FileDrop, new[] { first }), null);
+                dock.DropEntries(new DataObject(DataFormats.FileDrop, new[] { second, first }), group.Id);
+                var saved = store.Load(out _).Entries.Where(e => e.IsDocument).ToArray();
+                Check(saved.Length == 2 && saved[0].GroupId == null && saved[1].GroupId == group.Id);
+                var panel = (StackPanel)((Viewbox)((Border)dock.Content).Child).Child;
+                foreach (var entry in saved)
+                {
+                    var button = entry.GroupId is null
+                        ? panel.Children.OfType<Button>().Single(b => Equals(b.Tag, entry))
+                        : (Button)typeof(DockWindow).GetMethod("CreateEntryButton", PrivateInstance)!.Invoke(dock, [entry, true])!;
+                    Check(ManagedShortcuts.Name(entry) == Path.GetFileName(entry.Path));
+                    button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Check(launches[^1].UseShellExecute && launches[^1].FileName == entry.Path && launches[^1].Arguments == "");
+                    var remove = button.ContextMenu.Items.OfType<MenuItem>().Single(i => Equals(i.Header, "Retirer du dock"));
+                    remove.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                }
+                Check(launches.Count == 2 && launches[0].FileName == first && launches[1].FileName == second && windows.Lists.Count == 0);
+                Check(store.Load(out _).Entries.All(e => !e.IsDocument));
+                Check(File.ReadAllText(first) == "original texte" && File.ReadAllText(second) == "original tableau");
+            }
+            finally { dock.Close(); }
+        });
     }
 
     private static void RunThemeTest(string temporary, string? previews)

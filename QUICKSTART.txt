@@ -8,7 +8,8 @@ WINDOCK — 0.0.20 — WINDOWS X64
    messagerie, dossier personnel, Téléchargements, Documents et corbeille.
    Les cibles indisponibles ou dupliquées sont omises. Les dossiers déplacés
    conservent leurs emplacements Windows. Un dock existant, même vide, reste inchangé.
-2. Déposez des raccourcis .lnk, des applications .exe ou des dossiers.
+2. Déposez des raccourcis .lnk, des applications .exe, des documents ou des dossiers sur le dock ou dans un groupe.
+   Un clic ouvre le document avec son application habituelle. Retirer du dock conserve le fichier original.
 3. Clic droit sur le fond du dock > Ajouter une application… ouvre le catalogue des applications classiques et Microsoft Store.
    Recherchez, cochez les applications puis cliquez sur Ajouter la sélection.
    Ajout manuel, dossiers et séparateurs restent disponibles dans cette fenêtre.

@@ -39,6 +39,7 @@ public sealed partial class DockWindow : Window
     private PixelRect indicatorArea;
     private DockLayout? placedLayout;
     private readonly Func<bool> readWindowsDarkTheme;
+    private readonly Action<ProcessStartInfo> startTarget;
     private readonly SolidColorBrush dockBackground = new(Color.FromRgb(27, 30, 39));
     private ContextMenu? activeMenu;
     private ContextMenuDismissal? menuDismissal;
@@ -74,11 +75,13 @@ public sealed partial class DockWindow : Window
     internal DockWindow(DockSettings settings, SettingsStore store, IRecycleBinService recycleBin,
         IApplicationWindows? applicationWindows = null, IDefaultDockService? defaultDock = null,
         IExplorerRestarter? explorerRestarter = null, Func<bool>? confirmExplorerRestart = null,
-        Func<List<Display>>? getDisplays = null, Func<bool>? readWindowsDarkTheme = null)
+        Func<List<Display>>? getDisplays = null, Func<bool>? readWindowsDarkTheme = null,
+        Action<ProcessStartInfo>? startTarget = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(store);
         this.settings = settings;
+        this.startTarget = startTarget ?? (info => Process.Start(info)?.Dispose());
         this.readWindowsDarkTheme = readWindowsDarkTheme ?? DockMenuTheme.WindowsUsesDarkTheme;
         this.getDisplays = getDisplays ?? Native.Displays;
         this.store = store;
@@ -491,7 +494,7 @@ public sealed partial class DockWindow : Window
         {
             var temporary = openApplications.Contains(entry);
             if (!temporary && shortcuts.IsMissing(entry)) { OfferRepair(entry); return; }
-            if (Directory.Exists(entry.Path)) { Launch(entry); return; }
+            if (entry.IsDocument || Directory.Exists(entry.Path)) { Launch(entry); return; }
             if (activeMenu is not null) activeMenu.IsOpen = false;
             var windows = await applicationWindows.ListAsync(entry, lifetime.Token);
             if (!IsCurrentEntry(entry) || !button.IsLoaded || request != openGeneration) return;
@@ -662,7 +665,7 @@ public sealed partial class DockWindow : Window
             var index = before is null ? -1 : settings.Entries.FindIndex(e => e.Id == before);
             try
             {
-                var added = shortcuts.Import(new(Guid.NewGuid(), fullPath, GroupId: groupId));
+                var added = shortcuts.Import(new(Guid.NewGuid(), fullPath, GroupId: groupId, IsDocument: EntryRules.IsDocumentFile(fullPath)));
                 var entries = settings.Entries.ToList();
                 entries.Insert(index < 0 ? entries.Count : index, added);
                 shortcuts.Commit(settings, entries);
@@ -670,7 +673,7 @@ public sealed partial class DockWindow : Window
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { ShowNotice(ex.Message); }
         }
         RenderItems();
-        if (rejected.Count > 0) ShowNotice("Seuls les raccourcis Windows (.lnk), exécutables (.exe) et dossiers sont acceptés.\n\nÉléments ignorés : " + string.Join(", ", rejected));
+        if (rejected.Count > 0) ShowNotice("Ces fichiers ou dossiers sont introuvables ou inaccessibles.\n\nÉléments ignorés : " + string.Join(", ", rejected));
     }
 
     private void PickApplication(Window? owner = null, Guid? groupId = null)
@@ -744,7 +747,7 @@ public sealed partial class DockWindow : Window
         try
         {
             if (shortcuts.IsMissing(entry)) { OfferRepair(entry); return; }
-            Process.Start(new ProcessStartInfo(entry.Path) { UseShellExecute = true });
+            startTarget(new ProcessStartInfo(entry.Path) { UseShellExecute = true });
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException or InvalidOperationException)
         { OfferRepair(entry, ex.Message); }

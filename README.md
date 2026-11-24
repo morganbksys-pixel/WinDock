@@ -12,7 +12,7 @@ Vos applications et dossiers favoris, à portée de clic dans un dock discret po
 
 ## Vos raccourcis, à votre façon
 
-- **Ajoutez vos favoris** depuis le catalogue des applications classiques et Microsoft Store, ou déposez vos raccourcis et dossiers depuis l’Explorateur.
+- **Ajoutez vos favoris** depuis le catalogue des applications classiques et Microsoft Store, ou déposez vos documents, raccourcis et dossiers depuis l’Explorateur.
 - **Organisez le dock** par glisser-déposer : utilisez des séparateurs ou glissez une icône sur une autre pour créer un groupe dépliable. Double-cliquez sur son titre pour le renommer.
 - **Gardez votre écran dégagé** avec le masquage automatique ; survolez la petite barre pour retrouver le dock, ou choisissez de le garder visible.
 - **Choisissez le thème** dans **Réglages → Apparence** : Clair, Sombre ou Automatique pour suivre le thème des applications Windows.
