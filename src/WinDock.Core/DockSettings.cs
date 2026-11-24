@@ -16,7 +16,8 @@ public enum SettingsLoadStatus { Missing, Loaded, Recovered }
 /// <param name="ApplicationId">Optional Windows AppsFolder identity for catalogue entries.</param>
 /// <param name="IsGroup">Whether this entry is a root group tile with an empty path.</param>
 /// <param name="GroupId">Parent group identity, or null for a root entry.</param>
-public sealed record DockEntry(Guid Id, string Path, bool IsSeparator = false, string? DisplayName = null, string? SourcePath = null, string? ApplicationId = null, bool IsGroup = false, Guid? GroupId = null);
+/// <param name="IsDocument">Whether this favorite directly references a file opened through its Windows association.</param>
+public sealed record DockEntry(Guid Id, string Path, bool IsSeparator = false, string? DisplayName = null, string? SourcePath = null, string? ApplicationId = null, bool IsGroup = false, Guid? GroupId = null, bool IsDocument = false);
 public sealed class DockSettings
 {
     /// <summary>Preferred appearance, following the Windows app theme by default.</summary>
@@ -206,9 +207,12 @@ public static class EntryRules
         return NormalizeGroups(result);
     }
 
-    public static bool IsSupported(string path) => Directory.Exists(path) ||
-        (File.Exists(path) && (System.IO.Path.GetExtension(path).Equals(".lnk", StringComparison.OrdinalIgnoreCase) ||
-                              System.IO.Path.GetExtension(path).Equals(".exe", StringComparison.OrdinalIgnoreCase)));
+    public static bool IsSupported(string path) => Directory.Exists(path) || File.Exists(path);
+
+    /// <summary>Identifies dropped files that use their Windows file association.</summary>
+    public static bool IsDocumentFile(string path) => File.Exists(path) &&
+        !path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) &&
+        !path.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase);
 
     public static string DisplayName(string path) => Directory.Exists(path)
         ? new DirectoryInfo(path).Name : System.IO.Path.GetFileNameWithoutExtension(path);

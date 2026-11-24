@@ -17,6 +17,7 @@ internal static class DockMenuPreferences
     internal static readonly Command AddSeparator = new("add-separator", "Ajouter un séparateur");
     internal static readonly Command Quit = new("quit", "Quitter");
     internal static readonly Command Launch = new("launch", "Lancer à nouveau");
+    internal static readonly Command OpenDocument = new("open", "Ouvrir le document");
     internal static readonly Command Restart = new("restart", "Redémarrer l’Explorateur Windows…");
     internal static readonly Command Edit = new("edit", "Modifier le raccourci…");
     internal static readonly Command Move = new("move", "Déplacer vers…");
@@ -30,6 +31,7 @@ internal static class DockMenuPreferences
 
     internal static readonly Category Dock = new("dock", "Dock et engrenage", [AddApplication, AddSeparator, Quit]);
     internal static readonly Category App = new("app", "Applications et raccourcis", [Launch, Edit, Move, Remove, CloseWindows]);
+    internal static readonly Category Document = new("document", "Documents", [OpenDocument, Edit, Move, Remove]);
     internal static readonly Category Explorer = new("explorer", "Explorateur Windows", [Restart, Edit, Move, Remove, CloseWindows]);
     internal static readonly Category Group = new("group", "Groupes", [AddApplication, Rename, Dissolve]);
     internal static readonly Category Separator = new("separator", "Séparateurs", [Duplicate, Remove]);
@@ -42,7 +44,7 @@ internal static class DockMenuPreferences
 
     internal static void Populate(StackPanel panel, DockSettings settings, Action changed)
     {
-        var categories = new ComboBox { ItemsSource = new[] { Dock, App, Explorer, Group, Separator, Recycle },
+        var categories = new ComboBox { ItemsSource = new[] { Dock, App, Document, Explorer, Group, Separator, Recycle },
             Margin = new Thickness(0, 0, 0, 12) };
         AutomationProperties.SetName(categories, "Menu à personnaliser");
         var commands = new StackPanel();

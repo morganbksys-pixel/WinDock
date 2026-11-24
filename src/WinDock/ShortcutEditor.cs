@@ -47,7 +47,7 @@ internal sealed class ShortcutEditor : Window
         }
         browse.Children.Add(Button("Parcourir…", () =>
         {
-            var picker = new OpenFileDialog { Filter = "Applications et raccourcis|*.exe;*.lnk", DereferenceLinks = false };
+            var picker = new OpenFileDialog { Filter = "Tous les fichiers|*.*", DereferenceLinks = false };
             if (picker.ShowDialog(this) == true) LoadSource(picker.FileName);
         }));
         browse.Children.Add(Button("Choisir un dossier…", () =>
@@ -115,6 +115,6 @@ internal sealed class ShortcutEditor : Window
             ? "Les arguments remplacent ceux du raccourci. Entourez de guillemets les valeurs contenant des espaces."
             : ShellShortcut.IsLink(source) && !loaded.Editable && target.Text == source
                 ? "Ce raccourci est conservé tel quel. Pour modifier ses paramètres, choisissez un exécutable ou un autre raccourci."
-                : "Les dossiers ne nécessitent ni arguments ni dossier de travail.";
+                : "Les documents et dossiers ne nécessitent ni arguments ni dossier de travail.";
     }
 }

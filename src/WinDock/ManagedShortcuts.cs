@@ -8,7 +8,8 @@ internal sealed class ManagedShortcuts(SettingsStore store)
 {
     private readonly string directory = Path.Combine(store.DataDirectory, "Shortcuts");
 
-    internal static string Name(DockEntry entry) => entry.DisplayName ?? EntryRules.DisplayName(entry.SourcePath ?? entry.Path);
+    internal static string Name(DockEntry entry) => entry.DisplayName ?? (entry.IsDocument
+        ? Path.GetFileName(entry.Path) : EntryRules.DisplayName(entry.SourcePath ?? entry.Path));
 
     internal DockEntry Import(DockEntry entry)
     {
@@ -51,12 +52,13 @@ internal sealed class ManagedShortcuts(SettingsStore store)
             // Opaque links remain byte-for-byte intact; only their displayed name can change.
             var copy = NewPath(entry.Id);
             File.Copy(source, copy);
-            return entry with { Path = copy, DisplayName = name.Trim(), SourcePath = Source(entry, source), ApplicationId = source == entry.Path ? entry.ApplicationId : null };
+            return entry with { Path = copy, IsDocument = false, DisplayName = name.Trim(), SourcePath = Source(entry, source), ApplicationId = source == entry.Path ? entry.ApplicationId : null };
         }
         if (!EntryRules.IsSupported(target) || ShellShortcut.IsLink(target))
-            throw new ArgumentException("Choisissez un exécutable ou un dossier existant, ou importez un raccourci avec Parcourir.");
-        if (Directory.Exists(target))
-            return entry with { Path = Path.GetFullPath(target), DisplayName = name.Trim(), SourcePath = target, ApplicationId = null };
+            throw new ArgumentException("Choisissez un fichier ou un dossier existant, ou importez un raccourci avec Parcourir.");
+        var document = EntryRules.IsDocumentFile(target);
+        if (document || Directory.Exists(target))
+            return entry with { Path = Path.GetFullPath(target), IsDocument = document, DisplayName = name.Trim(), SourcePath = target, ApplicationId = null };
         if (!string.IsNullOrWhiteSpace(details.WorkingDirectory) && !Directory.Exists(Environment.ExpandEnvironmentVariables(details.WorkingDirectory)))
             throw new ArgumentException("Le dossier de travail est introuvable.");
         var destination = NewPath(entry.Id);
@@ -67,7 +69,7 @@ internal sealed class ManagedShortcuts(SettingsStore store)
         }
         catch { if (File.Exists(destination)) File.Delete(destination); throw; }
         var sameTarget = source == entry.Path && string.Equals(ShellShortcut.Read(entry.Path).Target, target, StringComparison.OrdinalIgnoreCase);
-        return entry with { Path = destination, DisplayName = name.Trim(), SourcePath = Source(entry, source), ApplicationId = sameTarget ? entry.ApplicationId : null };
+        return entry with { Path = destination, IsDocument = false, DisplayName = name.Trim(), SourcePath = Source(entry, source), ApplicationId = sameTarget ? entry.ApplicationId : null };
     }
 
     internal void Commit(DockSettings settings, List<DockEntry> entries)
